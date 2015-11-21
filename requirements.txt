@@ -1,0 +1,7 @@
+numpy==1.10.1
+pyqtgraph==0.9.10
+pyside==1.2.4
+PyOpenGL==3.1.0
+PyOpenGL-accelerate==3.1.0
+pyopencl==2015.1
+networkx==1.10
