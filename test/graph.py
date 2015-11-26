@@ -1,25 +1,38 @@
 import unittest
 
+from zoonomia.graph import (
+    full, grow, BasisOperator, TerminalOperator, BasisSet, TerminalSet,
+    BasisNode, TerminalNode
+)
+
 
 def test_full():
-    pass
+    pass  # FIXME
 
 
 def test_grow():
-    pass
-
-
-def test_update():
-    pass
-
-
-class TestOperator(unittest.TestCase):
-    pass
+    pass  # FIXME
 
 
 class TestBasisOperator(unittest.TestCase):
-    pass
+    pass  # FIXME
 
 
 class TestTerminalOperator(unittest.TestCase):
-    pass
+    pass  # FIXME
+
+
+class TestBasisSet(unittest.TestCase):
+    pass  # FIXME
+
+
+class TestTerminalSet(unittest.TestCase):
+    pass  # FIXME
+
+
+class TestBasisNode(unittest.TestCase):
+    pass  # FIXME
+
+
+class TestTerminalNode(unittest.TestCase):
+    pass  # FIXME

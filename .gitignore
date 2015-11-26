@@ -3,3 +3,5 @@
 *.eggs
 venv
 .idea
+build
+dist

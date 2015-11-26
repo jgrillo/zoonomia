@@ -1,31 +1,8 @@
 ## Zoonomia
 
-Zoonomia is a library for performing multi-objective evolutionary optimization
-of graph structures. The aim is to unify some ideas from various sub-fields of
-evolutionary optimization under a simple yet sufficiently expressive API.
-
-### Installation
-
-TBD
-
-### Usage example
-
-TBD
-
-### Further reading
-
-For more information about Genetic Programming see
-
-TBD
-
-For more information about the Non-dominated Sorting Genetic Algorithm see
-
-TBD
-
-For more detailed API documentation see
-
-TBD
-
-### Related projects
-
-TBD
+Zoonomia is a library for multi-objective strongly typed genetic programming.
+The aim is to unify some ideas from various sub-fields of evolutionary
+optimization under a simple yet sufficiently expressive API. At this stage this
+project is much more an autodidactic exploration of this kind of system than a
+"stable",  "performant", or "useful" artifact. Everything here is subject to
+change, there are no guarantees.

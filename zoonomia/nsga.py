@@ -5,6 +5,7 @@ class Nsga2(object):
     def __init__(self, population_map=map, solution_map=map):
         self.population_map = population_map
         self.solution_map = solution_map
+        raise NotImplementedError()  # FIXME: implement
 
     def initialize(self):
         pass
@@ -18,6 +19,7 @@ class Unsga3(object):
     def __init__(self, population_map=map, solution_map=map):
         self.population_map = population_map
         self.solution_map = solution_map
+        raise NotImplementedError()  # FIXME: implement
 
     def initialize(self):
         pass
