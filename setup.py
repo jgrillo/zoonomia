@@ -1,16 +1,35 @@
 import os
 
+from itertools import ifilter
 from setuptools import setup
 
 HERE = os.path.abspath(os.path.dirname(__file__))
 
+
+def not_comment(line):
+    """Predicate function to determine whether a line is not a comment.
+
+    :param str line:
+    :return: comment
+    :rtype bool:
+    """
+    if line.strip().startswith('#'):
+        return False
+    else:
+        return True
+
+
 with open(os.path.join(HERE, 'requirements.txt')) as requirements_file:
-    REQUIREMENTS = tuple(line.strip() for line in requirements_file)
+    REQUIREMENTS = tuple(
+        line.strip() for line in ifilter(not_comment, requirements_file)
+    )
 
 with open(
     os.path.join(HERE, 'requirements-test.txt')
 ) as requirements_tests_file:
-    REQUIREMENTS_TEST = tuple(line.strip() for line in requirements_tests_file)
+    REQUIREMENTS_TEST = tuple(
+        line.strip() for line in ifilter(not_comment, requirements_tests_file)
+    )
 
 with open(os.path.join(HERE, 'README.md')) as readme_file:
     README = readme_file.read()
@@ -27,7 +46,6 @@ setup(
     url='https://www.github.com/jgrillo/zoonomia',
     description='Multi-objective strongly typed genetic programming library',
     long_description=README,
-    copyright='Copyright (c) 2015 Jesse C. Grillo',
     license='MIT',
     packages=('zoonomia',),
     classifiers=(
