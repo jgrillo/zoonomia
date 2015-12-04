@@ -10,14 +10,18 @@ def build_types_possibility_table(
     tree of maximum depth :math:`i`. See Montana1995.
 
     :param basis_set:
+        The OperatorSet of basis operators which, together with *terminal_set*,
+        satisfy the closure property.
 
     :type basis_set: zoonomia.solution.OperatorSet[BasisOperator]
 
     :param terminal_set:
+        The OperatorSet of terminal operators which, together with
+        *terminal_set*, satisfy the closure property.
 
     :type terminal_set: zoonomia.solution.OperatorSet[TerminalOperator]
 
-    :param max_depth:
+    :param max_depth: The maximum tree depth from root to leaf.
     :type max_depth: int
 
     :param grow_:
