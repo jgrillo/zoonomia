@@ -2,22 +2,97 @@ from zoonomia.tree import Node, Tree
 from zoonomia.solution import BasisOperator, Solution
 
 
-def full(max_depth, basis_set, terminal_set, dtype, objectives, rng):  # TODO: clean up docs
-    """An implementation of Koza's full tree generation strategy augmented to
+def build_types_possibility_table(
+    basis_set, terminal_set, max_depth, grow_=False
+):
+    """This function returns a "types possibility table" which, for each depth
+    :math:`d_{i} \in [1, ..., d_{max}]` gives the possible return types for a
+    tree of maximum depth :math:`i`. See Montana1995.
+
+    :param basis_set:
+
+    :type basis_set: zoonomia.solution.OperatorSet[BasisOperator]
+
+    :param terminal_set:
+
+    :type terminal_set: zoonomia.solution.OperatorSet[TerminalOperator]
+
+    :param max_depth:
+    :type max_depth: int
+
+    :param grow_:
+        Whether to generate a table for the *grow* method. Default is to
+        generate a table for the *full* method.
+
+    :type grow_: bool
+
+    :return:
+        A lookup table which for index :math:`i` provides a list of all the
+        possible return types for a tree of maximum depth :math:`i`.
+
+    :rtype: tuple[tuple[type]]
+
+    """
+    table = [set() for _ in xrange(max_depth)]
+
+    for terminal in terminal_set:
+        if terminal.dtype not in table[0]:
+            table[0].add(terminal.dtype)
+
+    for idx in xrange(1, max_depth):
+        if grow_:
+            table[idx].update(table[idx - 1])
+
+        for basis in basis_set:
+            if (
+                all(dtype in table[idx - 1] for dtype in basis.signature) and
+                basis.dtype not in table[idx]
+            ):
+                table[idx].add(basis.dtype)
+
+    return tuple(map(tuple, table))
+
+
+def full(max_depth, basis_set, terminal_set, dtype, objectives, rng):
+    """An implementation of Koza's *full* tree generation strategy augmented to
     take type information into account. Returns a candidate solution satisfying
     the property that all branches of the solution's tree representation have
-    path length from root to leaf equal to max_depth. See Koza1992 and
+    path length from root to leaf equal to :math:`d_{max}`. See Koza1992 and
     Montana1995.
 
-    :param int max_depth: The maximum path length from root to leaf.
-    :param zoonomia.operator.OperatorSet<BasisOperator> basis_set:
-    :param zoonomia.operator.OperatorSet<TerminalOperator> terminal_set:
-    :param type dtype: The return type of the resulting solution's functional
-    representation.
-    :param tuple<zoonomia.solution.Objective> objectives:
-    :param random.Random rng:
-    :return solution: A candidate solution.
-    :rtype zoonomia.solution.Solution:
+    :param max_depth: The maximum tree depth from root to leaf.
+    :type max_depth: int
+
+    :param basis_set:
+        The OperatorSet of basis operators which, together with *terminal_set*,
+        satisfy the closure property.
+
+    :type basis_set:
+        zoonomia.solution.BasisSet[zoonomia.solution.BasisOperator]
+
+    :param terminal_set:
+        The OperatorSet of terminal operators which, together with
+        *terminal_set*, satisfy the closure property.
+
+    :type terminal_set:
+        zoonomia.solution.TerminalSet[zoonomia.solution.TerminalOperator]
+
+    :param dtype:
+        The return type of the resulting solution's functional representation.
+
+    :type dtype: type
+
+    :param objectives:
+        The objectives that the resulting solution will be constructed with.
+
+    :type objectives: tuple[zoonomia.solution.Objective]
+
+    :param rng: A random number generator instance.
+    :type rng: random.Random
+
+    :return: A candidate solution.
+    :rtype: zoonomia.solution.Solution
+
     """
     if max_depth <= 1:
         node = Node(operator=rng.choice(terminal_set[dtype]))
@@ -53,21 +128,45 @@ def full(max_depth, basis_set, terminal_set, dtype, objectives, rng):  # TODO: c
     return Solution(tree=tree, objectives=objectives)  # TODO: decouple Solution from Objectives?
 
 
-def grow(max_depth, basis_set, terminal_set, dtype, objectives, rng):  # TODO: clean up docs
-    """An implementation of Koza's grow tree generation strategy augmented to
+def grow(max_depth, basis_set, terminal_set, dtype, objectives, rng):
+    """An implementation of Koza's *grow* tree generation strategy augmented to
     take type information into account. Returns a candidate solution whose
     graph representation has maximum path length from root to leaf constrained
-    to the interval [1, max_depth]. See Koza1992 and Montana1995.
+    to the interval :math:`[1, d_{max}]`. See Koza1992 and Montana1995.
 
-    :param int max_depth: The max path length from root to leaf.
-    :param zoonomia.operator.OperatorSet<BasisOperator> basis_set:
-    :param zoonomia.operator.OperatorSet<TerminalOperator> terminal_set:
-    :param type dtype: The return type of the resulting solution's functional
-    representation.
-    :param tuple<zoonomia.solution.Objective> objectives:
-    :param random.Random rng:
-    :return solution: A candidate solution.
-    :rtype zoonomia.solution.Solution:
+    :param max_depth: The maximum tree depth from root to leaf.
+    :type max_depth: int
+
+    :param basis_set:
+        The OperatorSet of basis operators which, together with *terminal_set*,
+        satisfy the closure property.
+
+    :type basis_set:
+        zoonomia.solution.BasisSet[zoonomia.solution.BasisOperator]
+
+    :param terminal_set:
+        The OperatorSet of terminal operators which, together with
+        *basis_set*, satisfy the closure property.
+
+    :type terminal_set:
+        zoonomia.solution.TerminalSet[zoonomia.solution.TerminalOperator]
+
+    :param dtype:
+        The return type of the resulting solution's functional representation.
+
+    :type dtype: type
+
+    :param objectives:
+        The objectives that the resulting solution will be constructed with.
+
+    :type objectives: tuple[zoonomia.solution.Objective]
+
+    :param rng: A random number generator instance.
+    :type rng: random.Random
+
+    :return: A candidate solution.
+    :rtype: zoonomia.solution.Solution
+
     """
     if max_depth <= 1:
         node = Node(operator=rng.choice(terminal_set[dtype]))
@@ -111,20 +210,46 @@ def grow(max_depth, basis_set, terminal_set, dtype, objectives, rng):  # TODO: c
 
 def ramped_half_and_half(
     max_depth, population_size, basis_set, terminal_set, dtype, objectives, rng
-):  # TODO: clean up docs
+):
     """An implementation of something like Koza's ramped half-and-half
     population initialization procedure. See Koza1992.
 
-    :param int max_depth: the max tree depth per individual.
-    :param int population_size: number of individuals in the population.
-    :param BasisSet<BasisOperator> basis_set:
-    :param TerminalSet<TerminalOperator> terminal_set:
-    :param type dtype: The return type of the resulting solutions' functional
-    representations.
-    :param tuple<zoonomia.solution.Objective> objectives:
-    :param random.Random rng:
-    :return population:
-    :rtype frozenset:
+    :param max_depth: the max tree depth per individual.
+    :type max_depth: int
+
+    :param population_size: number of individuals in the population.
+    :type population_size: int
+
+    :param basis_set:
+        The OperatorSet of basis operators which, together with *terminal_set*,
+        satisfy the closure property.
+
+    :type basis_set:
+        zoonomia.solution.BasisSet[zoonomia.solution.BasisOperator]
+
+    :param terminal_set:
+        The OperatorSet of terminal operators which, together with
+        *basis_set*, satisfy the closure property.
+
+    :type terminal_set:
+        zoonomia.solution.TerminalSet[zoonomia.solution.TerminalOperator]
+
+    :param dtype:
+        The return type of the resulting solutions' functional representations.
+
+    :type dtype: type
+
+    :param objectives:
+        The objectives that the resulting solution will be constructed with.
+
+    :type objectives: tuple[zoonomia.solution.Objective]
+
+    :param rng: A random number generator instance.
+    :type rng: random.Random
+
+    :return:
+    :rtype: frozenset
+
     """
     counts = _random_depth_counts(
         max_depth=max_depth, population_size=population_size, rng=rng
@@ -145,9 +270,12 @@ def ramped_half_and_half(
 def mutate_subtree(solution):
     """Perform subtree mutation on a solution, returning a new mutant solution.
 
-    :param Solution solution:
-    :return mutant:
-    :rtype Solution:
+    :param solution: A solution.
+    :type solution: zoonomia.solution.Solution
+
+    :return: A mutant solution.
+
+    :rtype: zoonomia.solution.Solution
     """
     raise NotImplementedError()  # FIXME: implement
 
@@ -155,40 +283,56 @@ def mutate_subtree(solution):
 def mutate_node(solution):
     """Perform a point mutation on a solution, returning a new mutant solution.
 
-    :param Solution solution:
-    :return mutant:
-    :rtype Solution:
+    :param solution: A solution.
+    :type solution: zoonomia.solution.Solution
+
+    :return: A mutant solution.
+
+    :rtype: zoonomia.solution.Solution
     """
     raise NotImplementedError()  # FIXME: implement
 
 
-def crossover_subtree(solution1, solution2):
+def crossover_subtree(solution_1, solution_2):
     """Perform subtree crossover between two solutions.
 
-    :param Solution solution1:
-    :param Solution solution2:
-    :return children:
-    :rtype tuple<Solution>:
+    :param solution_1: A solution.
+    :type solution_1: zoonomia.solution.Solution
+
+    :param solution_2: Another solution.
+    :type solution_2: zoonomia.solution.Solution
+
+    :return: Two mutant solution offspring.
+
+    :rtype: tuple[zoonomia.solution.Solution]
     """
     raise NotImplementedError()  # FIXME: implement
 
 
-def tournament_select(solution1, solution2, rng):  # TODO: clean up docs
+def tournament_select(solution_1, solution_2, rng):  # TODO: clean up docs
     """Perform multi-objective tournament selection between two candidate
     solutions.
 
-    :param Solution solution1:
-    :param Solution solution2:
-    :param random.Random rng:
-    :return solution:
-    :rtype Solution:
+    :param solution_1: A candidate solution.
+    :type solution_1: zoonomia.solution.Solution
+
+    :param solution_2: Another candidate solution.
+    :type solution_2: zoonomia.solution.Solution
+
+    :param rng: A random number generator instance.
+    :type rng: random.Random
+
+    :return: The solution which wins the tournament.
+
+    :rtype: zoonomia.solution.Solution
+
     """
-    if solution1 > solution2:
-        return solution1
-    elif solution1 < solution2:
-        return solution2
+    if solution_1 > solution_2:
+        return solution_1
+    elif solution_1 < solution_2:
+        return solution_2
     else:  # TODO: maybe make a more nuanced decision here?
-        return rng.choice((solution1, solution2))
+        return rng.choice((solution_1, solution_2))
 
 
 def _ramped_half_and_half_generator(

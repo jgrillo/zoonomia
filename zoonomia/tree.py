@@ -3,19 +3,33 @@ import logging
 log = logging.getLogger(__name__)  # FIXME
 
 
-class Node(object):  # TODO: make lazy/immutable? make thread safe?
+class Node(object):  # TODO: make lazy/immutable? make thread safe? Any gain?
+    """Nodes are the fundamental elements of the trees used to represent
+    candidate solutions in Zoonomia. A tree is composed by linking nodes
+    together using the *add_child* method.
+
+    .. warning::
+        Nodes are not intended to be thread safe. You should construct
+        tree structures from a single thread and only when you are done
+        mutating the structure should the root node be passed into the
+        constructor of zoonomia.tree.Tree.
+
+    """
 
     __slots__ = ('operator', 'dtype', 'left', '_right', 'right')
 
-    def __init__(self, operator):  # TODO: clean up docs
+    def __init__(self, operator):
         """A node has a unique identity and holds a reference to an operator.
         Optionally, a node can hold references to child nodes provided that
         those child nodes' operators' dtypes match this node's operator's
         signature.
 
-        WARNING: Nodes are not (yet) thread safe.
+        :param operator:
+            A reference to the operator to associate with this node.
 
-        :param BasisOperator or TerminalOperator operator:
+        :type operator:
+            zoonomia.solution.BasisOperator or zoonomia.solution.TerminalOperator
+
         """
         self.operator = operator
         self.dtype = operator.dtype
@@ -24,18 +38,28 @@ class Node(object):  # TODO: make lazy/immutable? make thread safe?
         self.right = self._right
 
     def add_child(self, child, position):  # TODO: clean up docs
-        """Add a child to this node corresponding to a position in the
+        """Add a child to this node corresponding to a *position* in the
         operator's signature. The child node's dtype must match the operator's
-        signature at the given position. It is expected that this method will
-        be called once for each location in the operator's signature.
+        signature at the given position.
 
-        :param Node child:
-        :param int position:
+        :param child:
+            A reference to another Node instance.
 
-        :raise TypeError: if child's dtype doesn't match the operator's
-        signature at the given position
-        :raise IndexError: if child's signature does not contain an index
-        corresponding to the given position.
+        :type child: zoonomia.tree.Node
+
+        :param position:
+            The position, corresponding to an element of the operator's
+            signature, to "wire up" the child node's operator's output.
+
+        :type position: int
+
+        :raise TypeError:
+            If child's dtype doesn't match the operator's signature at the
+            given position.
+
+        :raise IndexError:
+            If child's signature does not contain an index corresponding to the
+            given position.
         """
         if self.operator.signature[position] is not child.dtype:
             log.error('child dtype does not match signature at position')  # FIXME
@@ -62,6 +86,18 @@ class Node(object):  # TODO: make lazy/immutable? make thread safe?
 
 
 class Tree(object):
+    """Whereas a tree data structure is composed of zoonomia.tree.Node objects
+    which refer to each other in a potentially complicated manner, a Tree
+    instance is a "handle" which we can use to abstract away that complexity
+    and actually use the tree to do work.
+
+    .. note::
+        While the Nodes which are used to construct a tree data structure are
+        not thread-safe, if you make sure that once a Tree is constructed
+        nothing will change its nodes you can be sure that the tree is
+        "effectively immutable" and therefore "safe".
+
+    """
 
     __slots__ = ('root', 'dtype')
 
@@ -71,12 +107,24 @@ class Tree(object):
         all the nodes. You should ensure that the tree data structure is
         fully-populated before you attempt iteration.
 
-        :param Node root:
+        :param root:
+            The root node of the tree data structure which this instance will
+            "wrap".
+
+        :type root: zoonomia.tree.Node
+
         """
         self.root = root
         self.dtype = root.dtype
 
     def __iter__(self):
+        """Returns a post-order depth-first iterator over all nodes in this
+        tree.
+
+        :return: An iterator over all the nodes in this tree.
+        :rtype: collections.Iterator[zoonomia.tree.Node]
+
+        """
         stack = [self.root]
         last = None
 

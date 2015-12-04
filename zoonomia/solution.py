@@ -9,17 +9,48 @@ log = logging.getLogger(__name__)  # FIXME
 
 
 def verify_closure_property(basis_set, terminal_set):  # TODO: clean up docs
-    """Verify that the OperatorSets basis_set and terminal_set together satisfy
-    a strongly-typed version of the closure property. You can use this function
-    to unit-test your OperatorSets. See Koza1992 for more about the closure
-    property.
+    """Verify that the OperatorSets *basis_set* and *terminal_set* together
+    satisfy a strongly-typed version of the closure property. You can use this
+    function to unit-test your OperatorSets. See Koza1992 for more about the
+    closure property.
 
-    :param OperatorSet<BasisOperator> basis_set:
-    :param OperatorSet<TerminalOperator> terminal_set:
+    .. warning::
+        This function can only check that the combined *basis_set* and
+        *terminal_set* is closed with respect to *types*. You must ensure that
+        the functions you provide are well-behaved (in the closure sense) given
+        any *values* they might encounter.
 
-    :raise AssertionError: if the closure property is not satisfied.
+    :param basis_set:
+        The candidate basis set to test for closure.
+
+    :type basis_set: zoonomia.solution.OperatorSet[BasisOperator]
+
+    :param terminal_set:
+        The candidate terminal set to test for closure.
+
+    :type terminal_set: zoonomia.solution.OperatorSet[TerminalOperator]
+
+    :return: True if the closure property is satisfied, False otherwise.
+    :rtype: bool
+
     """
-    raise NotImplementedError()  # FIXME
+    operator_set = basis_set.union(terminal_set)
+    closed = True
+
+    for basis_operator in basis_set:
+        for dtype in basis_operator.signature:
+            try:
+                operators = operator_set[dtype]
+                if len(operators) == 1 and operators[0] is basis_operator:
+                    # The only operator that has this return type is the one
+                    # whose signature we're currently inspecting. Given finite
+                    # space, that won't work!
+                    closed = False
+            except KeyError:
+                # No operators exist for this type
+                closed = False
+
+    return closed
 
 
 class BasisOperator(object):
@@ -29,15 +60,27 @@ class BasisOperator(object):
     def __init__(self, func, signature, dtype):
         """A BasisOperator represents a member of the basis set. A
         BasisOperator contains a reference to a function, a tuple type
-        signature corresponding to that function, and a reference dtype to that
-        function's return type.
+        *signature* corresponding to that function, and a reference *dtype* to
+        that function's return type.
 
-        :param Function<(T0, ..., TN), U> func: A function of arity N+1 which
-        takes N+1 arguments having type signature (T0, ..., TN) to a type U.
-        :param tuple<T> signature: Type signature for func. You should make
-        sure this matches the actual types that func expects.
-        :param U dtype: Output type for func. You should make sure this matches
-        the actual type returned by function.
+        :param func:
+            A function of arity :math:`N+1` which takes :math:`N+1` arguments
+            having type signature :math:`(T0, ..., TN)` to a result of type
+            :math:`U`.
+
+        :type func: (T) -> U
+
+        :param signature:
+            Type signature for *func*. You should make sure this matches the
+            actual types that the function expects.
+
+        :type signature: tuple[type]
+
+        :param dtype:
+            Output type for *func*. You should make sure this matches the
+            actual type returned by the function.
+
+        :type dtype: U
         """
         self.func = func
         self.signature = signature
@@ -55,9 +98,6 @@ class BasisOperator(object):
     def __call__(self, *args, **kwargs):
         return self.func(*args, **kwargs)
 
-    def __eq__(self, other):
-        return hash(self) == hash(other)
-
 
 class TerminalOperator(object):
 
@@ -67,9 +107,16 @@ class TerminalOperator(object):
         """A TerminalOperator represents a member of the terminal set. A
         TerminalOperator acts as a source which emits data of type dtype.
 
-        :param iterator<T> source: An iterator which yields data of type T.
-        :param T dtype: The output type for source. You should make sure this
-        matches the actual type yielded by source.
+        :param source: An iterable which yields data of type T.
+
+        :type source: collections.Iterable[T]
+
+        :param dtype:
+            The output type for source. You should make sure this matches the
+            actual type yielded by source.
+
+        :type dtype: T
+
         """
         self.source = source
         self.dtype = dtype
@@ -94,7 +141,9 @@ class OperatorSet(object):
         the subset of operators having output type dtype or the subset of
         basis operators having a particular type signature.
 
-        :param iterable<BasisOperator or TerminalOperator> operators:
+        :param operators:
+
+        :type operators: collections.Iterable[BasisOperator|TerminalOperator]
         """
         self.operators = frozenset(operators)
         self._dtype_to_operators = {
@@ -114,13 +163,23 @@ class OperatorSet(object):
         """Returns an OperatorSet containing those elements which are in the
         union of both this OperatorSet and the other OperatorSet.
 
-        :param OperatorSet other:
+        :param other:
+        :type other: OperatorSet
+
         :return union:
-        :rtype OperatorSet:
+        :rtype: OperatorSet
         """
         return OperatorSet(
             operators=self.operators.union(other.operators)
         )
+
+    def __iter__(self):
+        """Returns an iterator over this instance's operators.
+
+        :return: An iterator of operators.
+        :rtype: collections.Iterator[BasisOperator|TerminalOperator]
+        """
+        return iter(self.operators)
 
     def __getitem__(self, item):
         """If item is a tuple, select those BasisOperators belonging to this
@@ -128,9 +187,19 @@ class OperatorSet(object):
         select those BasisOperators and TerminalOperators which have dtype
         equal to item.
 
-        :param tuple or type item:
-        :return operators:
-        :rtype tuple<BasisOperator> or tuple<TerminalOperator or BasisOperator>:
+        :param item: A *signature* or *dtype*.
+
+        :type item: tuple[type] or type
+
+        :raise KeyError:
+            If the given *item* has no associated operators in this
+            OperatorSet.
+
+        :return:
+            The operators belonging to this OperatorSet which match the
+            signature or dtype *item*.
+
+        :rtype: tuple[BasisOperator] or tuple[TerminalOperator|BasisOperator]
         """
         if isinstance(item, tuple):
             return self._signature_to_operators[item]
@@ -152,9 +221,16 @@ class Objective(object):
         Solution, and a weight by which the resulting fitness score will be
         multiplied.
 
-        :param Function<Solution, float> eval_func: a function which computes a
-        fitness score for a Solution.
-        :param float weight: the weight to give this objective.
+        :param eval_func:
+            A function which computes a fitness score for a Solution.
+
+        :type eval_func: (zoonomia.solution.Solution) -> float
+
+        :param weight:
+            The weight to give this objective.
+
+        :type weight: float
+
         """
         self._eval_func = eval_func
         self._weight = weight
@@ -175,10 +251,16 @@ class Objective(object):
         """Compute the fitness measurement of a solution with respect to this
         objective.
 
-        :param Solution solution: a candidate solution.
-        :return fitness: a fitness measurement of the solution with respect to
-        this objective.
-        :rtype Fitness:
+        :param solution: A candidate solution.
+
+        :type solution: zoonomia.solution.Solution
+
+        :return:
+            A fitness measurement of the solution with respect to this
+            objective.
+
+        :rtype zoonomia.solution.Fitness:
+
         """
         score = self._eval_func(solution) * self._weight
         return Fitness(score=score, objective=self)
@@ -191,8 +273,11 @@ class Fitness(object):
     def __init__(self, score, objective):
         """A Fitness maps a fitness measurement to an Objective.
 
-        :param float score:
-        :param Objective objective:
+        :param score:
+        :type score: float
+
+        :param objective:
+        :type objective: zoonomia.solution.Objective
         """
         self.score = score
         self._objective = objective
@@ -232,11 +317,24 @@ class Solution(object):
         """A Solution unites a tree representation with a collection of
         Objectives.
 
-        :param Tree tree:
-        :param tuple<Objective> objectives:
-        :param Function<(Function<T, U>, iterable<T>), iterable<U>> map_: the
-        map implementation to use in computing things (such as Fitness values)
-        associated with this solution.
+        :param tree:
+
+        :type tree:
+            zoonomia.tree.Tree
+
+        :param objectives:
+
+
+        :type objectives:
+            tuple[zoonomia.solution.Objective]
+
+        :param  map_:
+            The map implementation to use in computing things (such as Fitness
+            values) associated with this solution.
+
+        :type map_:
+            ((T) -> U, collections.Iterable[T]) -> collectons.Iterable[U]
+
         """
         self.tree = tree
         self.objectives = objectives
@@ -252,12 +350,13 @@ class Solution(object):
         result in only one (potentially expensive) call to each associated
         Objective's evaluate method.
 
-        :return fitness_tuple: A tuple of Fitness measurements.
-        :rtype tuple<Fitness>:
+        :return: A tuple of Fitness measurements.
+        :rtype: tuple[zoonomia.solution.Fitness]
+
         """
         ##
         # NOTE: in what follows, it is assumed that self._fitnesses will be
-        # None (as initialized) until it is given a tuple<Fitness> value, and
+        # None (as initialized) until it is given a tuple[Fitness] value, and
         # that this state transition will happen only once.
         ##
         if self._fitnesses is None:
@@ -285,9 +384,12 @@ class Solution(object):
         measurement is strictly greater than--the corresponding Fitness
         measurements for the other solution.
 
-        :param Solution other: Another candidate solution.
-        :return dominant: Whether this solution dominates other.
-        :rtype bool:
+        :param other: Another candidate solution.
+        :type other: zoonomia.solution.Solution
+
+        :return: Whether this solution dominates other.
+        :rtype: bool
+
         """
         return any(
             f1 > f2 for f1, f2 in
