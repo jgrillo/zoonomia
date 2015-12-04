@@ -7,12 +7,7 @@ HERE = os.path.abspath(os.path.dirname(__file__))
 
 
 def not_comment(line):
-    """Predicate function to determine whether a line is not a comment.
-
-    :param str line:
-    :return: comment
-    :rtype bool:
-    """
+    """Predicate function to determine whether a line is not a comment."""
     if line.strip().startswith('#'):
         return False
     else:
