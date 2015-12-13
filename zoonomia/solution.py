@@ -1,7 +1,7 @@
 import itertools
 import logging
 
-from threading import Lock
+from threading import RLock
 
 from zoonomia.tree import Tree
 
@@ -55,7 +55,7 @@ def verify_closure_property(basis_set, terminal_set):  # TODO: clean up docs
 
 class BasisOperator(object):
 
-    __slots__ = ('func', 'signature', 'dtype')
+    __slots__ = ('func', 'signature', 'dtype', '_hash')
 
     def __init__(self, func, signature, dtype):
         """A BasisOperator represents a member of the basis set. A
@@ -78,13 +78,20 @@ class BasisOperator(object):
 
         :param dtype:
             Output type for *func*. You should make sure this matches the
-            actual type returned by the function.
+            actual type :math:`U` returned by the function.
 
         :type dtype: U
         """
         self.func = func
         self.signature = signature
         self.dtype = dtype
+        self._hash = hash((self.func, self.signature, self.dtype))
+
+    def __hash__(self):
+        return self._hash
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
 
     def __repr__(self):
         return (
@@ -101,7 +108,7 @@ class BasisOperator(object):
 
 class TerminalOperator(object):
 
-    __slots__ = ('source', 'dtype')
+    __slots__ = ('source', 'dtype', '_hash')
 
     def __init__(self, source, dtype):
         """A TerminalOperator represents a member of the terminal set. A
@@ -120,6 +127,13 @@ class TerminalOperator(object):
         """
         self.source = source
         self.dtype = dtype
+        self._hash = hash((self.source, self.dtype))
+
+    def __hash__(self):
+        return self._hash
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
 
     def __repr__(self):
         return 'TerminalOperator(source={source}, dtype={dtype})'.format(
@@ -147,16 +161,21 @@ class OperatorSet(object):
         """
         self.operators = frozenset(operators)
         self._dtype_to_operators = {
-            operator.dtype: tuple(
+            operator.dtype: frozenset(
                 o for o in self.operators if o.dtype == operator.dtype
             )
             for operator in self.operators
         }
+
+        basis_operators = frozenset(
+            o for o in self.operators if hasattr(o, 'signature')
+        )
+
         self._signature_to_operators = {
-            operator.signature: tuple(
-                o for o in self.operators if o.signature == operator.signature
+            operator.signature: frozenset(
+                o for o in basis_operators if o.signature == operator.signature
             )
-            for operator in self.operators if hasattr(operator, 'signature')
+            for operator in basis_operators
         }
 
     def union(self, other):
@@ -199,7 +218,7 @@ class OperatorSet(object):
             The operators belonging to this OperatorSet which match the
             signature or dtype *item*.
 
-        :rtype: tuple[BasisOperator] or tuple[TerminalOperator|BasisOperator]
+        :rtype: frozenset[TerminalOperator|BasisOperator]
         """
         if isinstance(item, tuple):
             return self._signature_to_operators[item]
@@ -234,7 +253,7 @@ class Objective(object):
         """
         self._eval_func = eval_func
         self._weight = weight
-        self._hash = hash((eval_func, weight))
+        self._hash = hash((self._eval_func, self._weight))
 
     def __repr__(self):
         return 'Objective(eval_func={eval_func}, weight={weight})'.format(
@@ -268,69 +287,80 @@ class Objective(object):
 
 class Fitness(object):
 
-    __slots__ = ('score', '_objective', '_hash')
+    __slots__ = ('score', 'objective', '_hash')
 
     def __init__(self, score, objective):
-        """A Fitness maps a fitness measurement to an Objective.
+        """A Fitness maps a fitness measurement to an Objective, and provides
+        comparison methods which allow a user to impose an ordering (by
+        *score*) on a collection of Fitness objects.
 
-        :param score:
+        :param score: A fitness measurement.
         :type score: float
 
-        :param objective:
+        :param objective: The Objective against which *score* was computed.
         :type objective: zoonomia.solution.Objective
+
         """
         self.score = score
-        self._objective = objective
-        self._hash = hash((score, objective))
+        self.objective = objective
+        self._hash = hash((self.score, self.objective))
 
     def __repr__(self):
         return 'Fitness(score={score}, objective={objective})'.format(
-            score=repr(self.score), objective=repr(self._objective)
+            score=repr(self.score), objective=repr(self.objective)
         )
 
     def __hash__(self):
         return self._hash
 
     def __eq__(self, other):
-        hash(self) == hash(other)
+        return hash(self) == hash(other)
 
     def __gt__(self, other):
-        return self.score > other.score
+        return self.score > other.score and self.objective == other.objective
 
     def __ge__(self, other):
-        return self.score >= other.score
+        return self.score >= other.score and self.objective == other.objective
 
     def __lt__(self, other):
-        return self.score < other.score
+        return self.score < other.score and self.objective == other.objective
 
     def __le__(self, other):
-        return self.score <= other.score
+        return self.score <= other.score and self.objective == other.objective
 
 
 class Solution(object):
+    """The Solution type provides an abstraction over a candidate solution's
+    tree representation, the objectives against which the candidate will be
+    measured, and the results of evaluating the candidate solution against its
+    objectives.
 
-    __slots__ = (
-        'tree', 'objectives', 'map', '_hash', '_lock', '_fitnesses'
-    )
+    """
+
+    __slots__ = ('tree', 'map', 'objectives', '_fitnesses', '_hash', '_lock')
 
     def __init__(self, tree, objectives, map_=map):
-        """A Solution unites a tree representation with a collection of
-        Objectives.
+        """A Solution instance unites a Tree representation with a tuple of
+        Objectives, and provides functionality to evaluate the representation's
+        fitness with respect to each of those Objectives. Solution instances
+        can also be ordered with respect to the Pareto-dominance of their
+        respective fitness score collections.
 
         :param tree:
+            A Tree representation of some computer program.
 
-        :type tree:
-            zoonomia.tree.Tree
+        :type tree: zoonomia.tree.Tree
 
         :param objectives:
+            The Objectives to evaluate this Solution against.
 
-
-        :type objectives:
-            tuple[zoonomia.solution.Objective]
+        :type objectives: tuple[zoonomia.solution.Objective]
 
         :param  map_:
             The map implementation to use in computing things (such as Fitness
-            values) associated with this solution.
+            values) associated with this solution. This implementation need not
+            preserve ordering, as the methods which use it ensure that ordering
+            is preserved where required.
 
         :type map_:
             ((T) -> U, collections.Iterable[T]) -> collectons.Iterable[U]
@@ -340,7 +370,7 @@ class Solution(object):
         self.objectives = objectives
         self.map = map_
         self._fitnesses = None
-        self._lock = Lock()
+        self._lock = RLock()
         self._hash = None
 
     def evaluate(self):
@@ -354,31 +384,33 @@ class Solution(object):
         :rtype: tuple[zoonomia.solution.Fitness]
 
         """
-        ##
-        # NOTE: in what follows, it is assumed that self._fitnesses will be
-        # None (as initialized) until it is given a tuple[Fitness] value, and
-        # that this state transition will happen only once.
-        ##
         if self._fitnesses is None:
             with self._lock:
                 if self._fitnesses is None:
-                    self._fitnesses = tuple(
-                        self.map(
-                            lambda o: Fitness(
-                                score=o.evaluate(self), objective=o
-                            ),
-                            self.objectives
-                        )
+                    fitnesses = self.map(
+                        lambda o: o.evaluate(self), self.objectives
                     )
-                    self._hash = hash((self.objectives, self._fitnesses))
-            return self._fitnesses
-        else:
-            return self._fitnesses
+                    ordered_fitnesses = [
+                        None for _ in xrange(len(self.objectives))
+                    ]
+
+                    for fitness in fitnesses:
+                        idx = self.objectives.index(fitness.objective)
+                        ordered_fitnesses[idx] = fitness
+
+                    log.debug('fitnesses: %s', repr(fitnesses))
+                    log.debug('ordered_fitnesses: %s', repr(ordered_fitnesses))
+
+                    self._fitnesses = tuple(ordered_fitnesses)
+                    self._hash = hash(
+                        (self.tree, self._fitnesses, self.objectives)
+                    )
+        return self._fitnesses  # TODO: asynchronize by making _fitnesses a generator?
 
     def dominates(self, other):
         """Predicate function to determine whether this solution dominates
         another solution in the Pareto sense. That is, we say that this
-        solution dominates another solution if for all Objectives associated
+        solution *dominates* another solution if for all Objectives associated
         with both solutions the corresponding Fitness measurements for this
         solution are all greater than or equal to--and at least one Fitness
         measurement is strictly greater than--the corresponding Fitness
@@ -387,7 +419,7 @@ class Solution(object):
         :param other: Another candidate solution.
         :type other: zoonomia.solution.Solution
 
-        :return: Whether this solution dominates other.
+        :return: Whether this solution dominates *other*.
         :rtype: bool
 
         """
@@ -412,9 +444,7 @@ class Solution(object):
         if self._hash is None:
             with self._lock:
                 if self._hash is None:
-                    log.warn(
-                        'Evaluation triggered by hash for solution %s', self
-                    )
+                    log.warn('Evaluation triggered by hash for %s', self)
                     self.evaluate()
         return self._hash
 
@@ -427,14 +457,8 @@ class Solution(object):
         else:
             return False
 
-    def __ge__(self, other):
-        return self > other or self == other
-
     def __lt__(self, other):
         if self.objectives == other.objectives:
             return self.dominates(other)
         else:
             return False
-
-    def __le__(self, other):
-        return self < other or self == other

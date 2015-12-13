@@ -34,7 +34,7 @@ def build_types_possibility_table(
         A lookup table which for index :math:`i` provides a list of all the
         possible return types for a tree of maximum depth :math:`i`.
 
-    :rtype: tuple[tuple[type]]
+    :rtype: tuple[frozenset[type]]
 
     """
     table = [set() for _ in xrange(max_depth)]
@@ -54,7 +54,7 @@ def build_types_possibility_table(
             ):
                 table[idx].add(basis.dtype)
 
-    return tuple(map(tuple, table))
+    return tuple(map(frozenset, table))
 
 
 def full(max_depth, basis_set, terminal_set, dtype, objectives, rng):

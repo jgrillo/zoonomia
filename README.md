@@ -1,6 +1,6 @@
 ## Zoonomia
 
-[![Documentation Status](https://readthedocs.org/projects/zoonomia/badge/?version=latest)](http://zoonomia.readthedocs.org/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/zoonomia/badge/?version=latest)](http://zoonomia.readthedocs.org/en/latest/?badge=latest) [![Build Status](https://travis-ci.org/jgrillo/zoonomia.svg)](https://travis-ci.org/jgrillo/zoonomia)
 
 Zoonomia is a library for multi-objective strongly typed genetic programming.
 The aim is to unify some ideas from various sub-fields of evolutionary

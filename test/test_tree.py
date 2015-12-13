@@ -18,8 +18,9 @@ class SomeOtherType(object):
 
 class TestNode(unittest.TestCase):
 
-    def test_node_operator_reference(self):
-        """Test that two different Nodes can refer to the same operator.
+    def test_node_operator_attribute(self):
+        """Test that the *operator* attribute is a reference to the basis
+        operator passed into the constructor.
 
         """
         def func(t): SomeType(arg=t.arg)
@@ -32,22 +33,6 @@ class TestNode(unittest.TestCase):
         basis_node_2 = Node(operator=basis_op)
 
         self.assertIs(basis_node_1.operator, basis_node_2.operator)
-
-    def test_node_identity_unique(self):
-        """Test that two different Nodes which refer to the same operator are
-        identically distinct.
-
-        """
-        def func(t): SomeType(arg=t.arg)
-        signature = (SomeType,)
-        dtype = SomeType
-
-        basis_op = BasisOperator(func=func, signature=signature, dtype=dtype)
-
-        basis_node_1 = Node(operator=basis_op)
-        basis_node_2 = Node(operator=basis_op)
-
-        self.assertIsNot(basis_node_1, basis_node_2)
 
     def test_node_dtype(self):
         """Test that a Node's dtype is identically the same as its operator's
@@ -188,6 +173,12 @@ class TestNode(unittest.TestCase):
         self.assertTupleEqual(
             basis_node.right, (terminal_node_3, terminal_node_2)
         )
+
+    def test_hash(self):
+        raise NotImplementedError()  # FIXME
+
+    def test_equals(self):  # TODO: check reflexivity
+        raise NotImplementedError()  # FIXME
 
 
 class TestTree(unittest.TestCase):
@@ -621,3 +612,9 @@ class TestTree(unittest.TestCase):
         self.assertIs(iter_3, node_4)
         self.assertIs(iter_4, node_5)
         self.assertIs(iter_5, node_6)
+
+    def test_hash(self):
+        raise NotImplementedError()  # FIXME
+
+    def test_equals(self):  # TODO: check reflexivity
+        raise NotImplementedError()  # FIXME

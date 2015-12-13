@@ -1,5 +1,7 @@
 import logging
 
+from threading import RLock
+
 log = logging.getLogger(__name__)  # FIXME
 
 
@@ -74,6 +76,12 @@ class Node(object):  # TODO: make lazy/immutable? make thread safe? Any gain?
             self._right[position - 1] = child
             self.right = tuple(r for r in reversed(self._right))
 
+    def __hash__(self):  # FIXME: does this cause recursive explosion?
+        return hash((self.operator, self.left, self.right))
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
     def __repr__(self):
         return (
             'Node(id={id}, operator={operator}, left={left}, right={right})'
@@ -99,7 +107,7 @@ class Tree(object):
 
     """
 
-    __slots__ = ('root', 'dtype')
+    __slots__ = ('root', 'dtype', '_lock', '_hash')
 
     def __init__(self, root):
         """A Tree instance is a thin wrapper around a tree data structure
@@ -116,6 +124,8 @@ class Tree(object):
         """
         self.root = root
         self.dtype = root.dtype
+        self._lock = RLock()
+        self._hash = None
 
     def __iter__(self):
         """Returns a post-order depth-first iterator over all nodes in this
@@ -162,3 +172,14 @@ class Tree(object):
                     stack.append(node)
 
             last = node
+
+    def __hash__(self):
+        if self._hash is None:
+            with self._lock:
+                if self._hash is None:
+                    hashes = tuple(hash(node) for node in self)
+                    self._hash = hash(hashes)
+        return self._hash
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
