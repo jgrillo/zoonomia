@@ -110,6 +110,13 @@ class TestBasisOperator(unittest.TestCase):
         self.assertEqual(basis_operator_1, basis_operator_2)
         self.assertEqual(basis_operator_2, basis_operator_1)
 
+    def test_basis_operator_not_equals(self):
+        """
+
+        :return:
+        """
+        raise NotImplementedError()  # FIXME
+
     def test_basis_operator_call(self):
         """Test that calling a basis operator like a function produces the same
         result as calling the basis operator's *func* attribute.
@@ -172,6 +179,13 @@ class TestTerminalOperator(unittest.TestCase):
 
         self.assertEqual(terminal_operator_1, terminal_operator_2)
         self.assertEqual(terminal_operator_2, terminal_operator_1)
+
+    def test_terminal_operator_not_equals(self):
+        """
+
+        :return:
+        """
+        raise NotImplementedError()  # FIXME
 
     def test_terminal_operator_iter(self):
         """Test that an iterator over a TerminalOperator produces the same
@@ -338,6 +352,13 @@ class TestObjective(unittest.TestCase):
         self.assertEqual(objective_1, objective_2)
         self.assertEqual(objective_2, objective_1)
 
+    def test_objective_not_equals(self):
+        """
+
+        :return:
+        """
+        raise NotImplementedError()  # FIXME
+
     def test_evaluate(self):
         """Test that calling an Objective's *evaluate* method produces a
         Fitness object whose *score* attribute is equal to the *weight*
@@ -426,6 +447,13 @@ class TestFitness(unittest.TestCase):
 
         self.assertEqual(fitness_1, fitness_2)
         self.assertEqual(fitness_2, fitness_1)
+
+    def test_fitness_not_equals(self):
+        """
+
+        :return:
+        """
+        raise NotImplementedError()  # FIXME
 
     def test_fitness_gt(self):
         """Test that fitness_1 with score_1 > score_2 is greater than fitness_2
@@ -629,14 +657,19 @@ class TestSolution(unittest.TestCase):
         self.assertFalse(solution_2.dominates(solution_1))
 
         eval_func_1.assert_has_calls(
-                calls=(mock.call(solution_1), mock.call(solution_2))
+            calls=(mock.call(solution_1), mock.call(solution_2))
         )
+        self.assertEqual(eval_func_1.call_count, 2)
+
         eval_func_2.assert_has_calls(
-                calls=(mock.call(solution_1), mock.call(solution_2))
+            calls=(mock.call(solution_1), mock.call(solution_2))
         )
+        self.assertEqual(eval_func_2.call_count, 2)
+
         eval_func_3.assert_has_calls(
-                calls=(mock.call(solution_1), mock.call(solution_2))
+            calls=(mock.call(solution_1), mock.call(solution_2))
         )
+        self.assertEqual(eval_func_3.call_count, 2)
 
     def test_solution_hash(self):
         """Test that two identically-distinct Solution instances which refer to
@@ -664,46 +697,199 @@ class TestSolution(unittest.TestCase):
                 tree=tree_2, objectives=(objective,), map_=pool.imap_unordered
         )
 
-        self.assertEqual(hash(solution_1), hash(solution_2))
+        for _ in xrange(100):
+            self.assertEqual(hash(solution_1), hash(solution_2))
 
-        eval_func.assert_called_with(solution_1)
-        eval_func.assert_called_with(solution_2)
+        eval_func.assert_has_calls(
+                calls=(mock.call(solution_1), mock.call(solution_2))
+        )
 
-    def test_solution_equals(self):  # FIXME: docstring not quite right
+        self.assertEqual(eval_func.call_count, 2)
+
+    def test_solution_equals(self):
         """Test that two identically distinct Solutions are equal if their
         hashes are equal.
 
         """
-        # FIXME: don't depend on hash test here, test behavior separately
+        pool = ThreadPool(processes=2)
+
         eval_func = mock.Mock(side_effect=[66.6, 66.6])
 
         objective = Objective(eval_func=eval_func, weight=42.0)
 
         terminal_operator = TerminalOperator(source=xrange(666), dtype=int)
 
-        root = Node(operator=terminal_operator)
+        root_1 = Node(operator=terminal_operator)
+        root_2 = Node(operator=terminal_operator)
 
-        tree = Tree(root=root)
+        tree_1 = Tree(root=root_1)
+        tree_2 = Tree(root=root_2)
 
-        solution_1 = Solution(tree=tree, objectives=(objective,))
-        solution_2 = Solution(tree=tree, objectives=(objective,))
+        solution_1 = Solution(
+                tree=tree_1, objectives=(objective,), map_=pool.imap_unordered
+        )
+        solution_2 = Solution(
+                tree=tree_2, objectives=(objective,), map_=pool.imap_unordered
+        )
 
-        self.assertEqual(solution_1, solution_2)
-        self.assertEqual(solution_2, solution_1)
+        for _ in xrange(100):
+            self.assertEqual(solution_1, solution_2)
+            self.assertEqual(solution_2, solution_1)
 
-        eval_func.assert_called_with(solution_1)
-        eval_func.assert_called_with(solution_2)
+        eval_func.assert_has_calls(
+                calls=(mock.call(solution_1), mock.call(solution_2))
+        )
+
+        self.assertEqual(eval_func.call_count, 2)
+
+    def test_solution_not_equals(self):
+        """
+
+        :return:
+        """
+        raise NotImplementedError()  # FIXME
 
     def test_solution_gt(self):
-        """Test that a Solution which dominates another solution is greater
-        than the other solution.
+        """Test that a Solution which dominates another solution and has equal
+        objectives is greater than the other solution.
 
         """
-        pass  # FIXME: same thing wrt threading as __eq__
+        pool = ThreadPool(processes=2)
+
+        eval_func_1 = mock.Mock(side_effect=[66.7, 66.6, 66.6])
+        eval_func_2 = mock.Mock(side_effect=[66.6, 66.6, 66.6])
+
+        objective_1 = Objective(eval_func=eval_func_1, weight=42.0)
+        objective_2 = Objective(eval_func=eval_func_2, weight=42.0)
+
+        terminal_operator_1 = TerminalOperator(source=xrange(666), dtype=int)
+        terminal_operator_2 = TerminalOperator(source=xrange(666), dtype=int)
+
+        root_1 = Node(operator=terminal_operator_1)
+        root_2 = Node(operator=terminal_operator_2)
+
+        tree_1 = Tree(root=root_1)
+        tree_2 = Tree(root=root_2)
+
+        solution_1 = Solution(
+            tree=tree_1,
+            objectives=(objective_1, objective_2),
+            map_=pool.imap_unordered
+        )
+        solution_2 = Solution(
+            tree=tree_2,
+            objectives=(objective_1, objective_2),
+            map_=pool.imap_unordered
+        )
+        solution_3 = Solution(
+            tree=tree_2,
+            objectives=(objective_2, objective_1),
+            map_=pool.imap_unordered
+        )
+
+        for _ in xrange(100):
+            self.assertGreater(solution_1, solution_2)
+            self.assertFalse(solution_2 > solution_1)
+            self.assertFalse(solution_1 > solution_3)
+            self.assertFalse(solution_1 < solution_3)
+
+        eval_func_1.assert_has_calls(
+            calls=(
+                mock.call(solution_1),
+                mock.call(solution_2),
+                mock.call(solution_3)
+            )
+        )
+        self.assertEqual(eval_func_1.call_count, 2)
+
+        eval_func_2.assert_has_calls(
+            calls=(
+                mock.call(solution_1),
+                mock.call(solution_2),
+                mock.call(solution_3)
+            )
+        )
+        self.assertEqual(eval_func_1.call_count, 2)
+
+    def test_solution_ge(self):
+        """
+
+        :return:
+        """
+        raise NotImplementedError()  # FIXME
 
     def test_solution_lt(self):
-        """Test that a solution which is dominated by another solution is less
-        than the other solution.
+        """Test that a solution which is dominated by another solution and has
+        equal objectives is less than the other solution.
 
         """
-        pass  # FIXME: same thing wrt threading as __eq__
+        pool = ThreadPool(processes=2)
+
+        eval_func_1 = mock.Mock(side_effect=[66.6, 66.7, 66.7])
+        eval_func_2 = mock.Mock(side_effect=[66.6, 66.6, 66.6])
+
+        objective_1 = Objective(eval_func=eval_func_1, weight=42.0)
+        objective_2 = Objective(eval_func=eval_func_2, weight=42.0)
+
+        terminal_operator_1 = TerminalOperator(source=xrange(666), dtype=int)
+        terminal_operator_2 = TerminalOperator(source=xrange(666), dtype=int)
+
+        root_1 = Node(operator=terminal_operator_1)
+        root_2 = Node(operator=terminal_operator_2)
+
+        tree_1 = Tree(root=root_1)
+        tree_2 = Tree(root=root_2)
+
+        solution_1 = Solution(
+            tree=tree_1,
+            objectives=(objective_1, objective_2),
+            map_=pool.imap_unordered
+        )
+        solution_2 = Solution(
+            tree=tree_2,
+            objectives=(objective_1, objective_2),
+            map_=pool.imap_unordered
+        )
+        solution_3 = Solution(
+            tree=tree_2,
+            objectives=(objective_2, objective_1),
+            map_=pool.imap_unordered
+        )
+
+        for _ in xrange(100):
+            self.assertLess(solution_1, solution_2)
+            self.assertFalse(solution_2 < solution_1)
+            self.assertFalse(solution_1 < solution_3)
+            self.assertFalse(solution_1 > solution_3)
+
+        eval_func_1.assert_has_calls(
+            calls=(
+                mock.call(solution_1),
+                mock.call(solution_2),
+                mock.call(solution_3)
+            )
+        )
+        self.assertEqual(eval_func_1.call_count, 3)
+
+        eval_func_2.assert_has_calls(
+            calls=(
+                mock.call(solution_1),
+                mock.call(solution_2),
+                mock.call(solution_3)
+            )
+        )
+        self.assertEqual(eval_func_1.call_count, 3)
+
+    def test_solution_le(self):
+        """
+
+        :return:
+        """
+        raise NotImplementedError()  # FIXME
+
+    def test_solutions_sorted(self):
+        """Test that a collection of solution instances behave nicely under the
+        built-in *sorted* function.
+
+        """
+        raise NotImplementedError() # FIXME

@@ -174,10 +174,13 @@ class TestNode(unittest.TestCase):
             basis_node.right, (terminal_node_3, terminal_node_2)
         )
 
-    def test_hash(self):
+    def test_node_hash(self):
         raise NotImplementedError()  # FIXME
 
-    def test_equals(self):  # TODO: check reflexivity
+    def test_node_equals(self):  # TODO: check reflexivity
+        raise NotImplementedError()  # FIXME
+
+    def test_node_not_equals(self):  # TODO: check reflexivity
         raise NotImplementedError()  # FIXME
 
 
@@ -613,8 +616,11 @@ class TestTree(unittest.TestCase):
         self.assertIs(iter_4, node_5)
         self.assertIs(iter_5, node_6)
 
-    def test_hash(self):
+    def test_tree_hash(self):
         raise NotImplementedError()  # FIXME
 
-    def test_equals(self):  # TODO: check reflexivity
+    def test_tree_equals(self):  # TODO: check reflexivity
+        raise NotImplementedError()  # FIXME
+
+    def test_tree_not_equals(self):  # TODO: check reflexivity
         raise NotImplementedError()  # FIXME

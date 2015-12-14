@@ -3,8 +3,6 @@ import logging
 
 from threading import RLock
 
-from zoonomia.tree import Tree
-
 log = logging.getLogger(__name__)  # FIXME
 
 
@@ -37,7 +35,7 @@ def verify_closure_property(basis_set, terminal_set):  # TODO: clean up docs
     operator_set = basis_set.union(terminal_set)
     closed = True
 
-    for basis_operator in basis_set:
+    for basis_operator in basis_set:  # FIXME: this is all broken and wrong
         for dtype in basis_operator.signature:
             try:
                 operators = operator_set[dtype]
@@ -93,6 +91,9 @@ class BasisOperator(object):
     def __eq__(self, other):
         return hash(self) == hash(other)
 
+    def __ne__(self, other):
+        return hash(self) != hash(other)
+
     def __repr__(self):
         return (
             'BasisOperator(func={func}, signature={signature}, dtype={dtype})'
@@ -134,6 +135,9 @@ class TerminalOperator(object):
 
     def __eq__(self, other):
         return hash(self) == hash(other)
+
+    def __ne__(self, other):
+        return hash(self) != hash(other)
 
     def __repr__(self):
         return 'TerminalOperator(source={source}, dtype={dtype})'.format(
@@ -266,6 +270,9 @@ class Objective(object):
     def __eq__(self, other):
         return hash(self) == hash(other)
 
+    def __ne__(self, other):
+        return hash(self) != hash(other)
+
     def evaluate(self, solution):
         """Compute the fitness measurement of a solution with respect to this
         objective.
@@ -315,6 +322,9 @@ class Fitness(object):
 
     def __eq__(self, other):
         return hash(self) == hash(other)
+
+    def __ne__(self, other):
+        return hash(self) != hash(other)
 
     def __gt__(self, other):
         return self.score > other.score and self.objective == other.objective
@@ -398,9 +408,6 @@ class Solution(object):
                         idx = self.objectives.index(fitness.objective)
                         ordered_fitnesses[idx] = fitness
 
-                    log.debug('fitnesses: %s', repr(fitnesses))
-                    log.debug('ordered_fitnesses: %s', repr(ordered_fitnesses))
-
                     self._fitnesses = tuple(ordered_fitnesses)
                     self._hash = hash(
                         (self.tree, self._fitnesses, self.objectives)
@@ -441,6 +448,19 @@ class Solution(object):
         )
 
     def __hash__(self):
+        """Computes this solution's hash in a thread-safe manner. A solution's
+        hash is computed by combining the hashes of its *tree*, its
+        *objectives*, and the zoonomia.solution.Fitness instances corresponding
+        to those objectives. Values are cached in keeping with the immutable
+        semantics of this class, but users should be aware that if this
+        instance's *evaluate* method has not been called prior to the first
+        call to *__hash__*, calling this method will trigger one (and only one)
+        potentially expensive *evaluate* call.
+
+        :return: The integer hash code for this instance.
+        :rtype: int
+
+        """
         if self._hash is None:
             with self._lock:
                 if self._hash is None:
@@ -449,16 +469,87 @@ class Solution(object):
         return self._hash
 
     def __eq__(self, other):
+        """Two solution instances are equal if their hashes are equal.
+
+        :param other: Another solution.
+        :type other: zoonomia.solution.Solution
+
+        :return: Whether this solution and *other* have equal hashes.
+        :rtype: bool
+
+        """
         return hash(self) == hash(other)
 
+    def __ne__(self, other):
+        """Two solution instances are unequal if their hashes are unequal.
+
+        :param other: Another solution.
+        :type other: zoonomia.solution.Solution
+
+        :return: Whether this solution and *other* have unequal hashes.
+        :rtype: bool
+
+        """
+        return hash(self) != hash(other)
+
     def __gt__(self, other):
+        """This solution instance is greater than the *other* solution instance
+        if this solution's *objectives* are equal to the other solution's
+        objectives and this solution *dominates* the other solution.
+
+        :param other: Another solution.
+        :type other: zoonomia.solution.Solution
+
+        :return:
+            Whether this solution dominates the *other* solution and has equal
+            objectives.
+
+        :rtype: bool
+
+        """
         if self.objectives == other.objectives:
             return self.dominates(other)
         else:
-            return False
+            return NotImplemented
+
+    def __ge__(self, other):
+        """This comparison method has no meaning for solution instances.
+
+        :param other: Another solution.
+        :type other: zoonomia.solution.Solution
+
+        :return: NotImplemented
+
+        """
+        return NotImplemented
 
     def __lt__(self, other):
+        """This solution instance is less than the *other* solution instance if
+        this solution's *objectives* are equal to the other solution's
+        objectives and this solution is *dominated* by the other solution.
+
+        :param other: Another solution.
+        :type other: zoonomia.solution.Solution
+
+        :return:
+            Whether this solution is dominated by the *other* solution and has
+            equal objectives.
+
+        :rtype: bool
+
+        """
         if self.objectives == other.objectives:
-            return self.dominates(other)
+            return other.dominates(self)
         else:
-            return False
+            return NotImplemented
+
+    def __le__(self, other):
+        """This comparison method has no meaning for solution instances.
+
+        :param other: Another solution.
+        :type other: zoonomia.solution.Solution
+
+        :return: NotImplemented
+
+        """
+        return NotImplemented

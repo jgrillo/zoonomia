@@ -82,6 +82,9 @@ class Node(object):  # TODO: make lazy/immutable? make thread safe? Any gain?
     def __eq__(self, other):
         return hash(self) == hash(other)
 
+    def __ne__(self, other):
+        return hash(self) != hash(other)
+
     def __repr__(self):
         return (
             'Node(id={id}, operator={operator}, left={left}, right={right})'
@@ -183,3 +186,6 @@ class Tree(object):
 
     def __eq__(self, other):
         return hash(self) == hash(other)
+
+    def __ne__(self, other):
+        return hash(self) != hash(other)
