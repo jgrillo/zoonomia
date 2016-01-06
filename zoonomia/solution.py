@@ -412,7 +412,8 @@ class Solution(object):
                     self._hash = hash(
                         (self.tree, self._fitnesses, self.objectives)
                     )
-        return self._fitnesses  # TODO: asynchronize by making _fitnesses a generator?
+        # TODO: asynchronize by making _fitnesses a generator?
+        return self._fitnesses
 
     def dominates(self, other):
         """Predicate function to determine whether this solution dominates
@@ -426,17 +427,26 @@ class Solution(object):
         :param other: Another candidate solution.
         :type other: zoonomia.solution.Solution
 
+        :raise TypeError:
+            If this instance's *objectives* are unequal to *other*'s
+            objectives.
+
         :return: Whether this solution dominates *other*.
         :rtype: bool
 
         """
-        return any(
-            f1 > f2 for f1, f2 in
-            itertools.izip(self.evaluate(), other.evaluate())
-        ) and all(
-            f1 >= f2 for f1, f2 in
-            itertools.izip(self.evaluate(), other.evaluate())
-        )
+        if self.objectives == other.objectives:
+            return any(
+                    f1 > f2 for f1, f2 in
+                    itertools.izip(self.evaluate(), other.evaluate())
+            ) and all(
+                    f1 >= f2 for f1, f2 in
+                    itertools.izip(self.evaluate(), other.evaluate())
+            )
+        else:
+            raise TypeError(
+                    'method is nonsense for solutions with unequal objectives'
+            )
 
     def __repr__(self):
         return (
@@ -500,6 +510,10 @@ class Solution(object):
         :param other: Another solution.
         :type other: zoonomia.solution.Solution
 
+        :raise TypeError:
+            If this instance's *objectives* are unequal to *other*'s
+            objectives.
+
         :return:
             Whether this solution dominates the *other* solution and has equal
             objectives.
@@ -507,21 +521,7 @@ class Solution(object):
         :rtype: bool
 
         """
-        if self.objectives == other.objectives:
-            return self.dominates(other)
-        else:
-            return NotImplemented
-
-    def __ge__(self, other):
-        """This comparison method has no meaning for solution instances.
-
-        :param other: Another solution.
-        :type other: zoonomia.solution.Solution
-
-        :return: NotImplemented
-
-        """
-        return NotImplemented
+        return self.dominates(other)
 
     def __lt__(self, other):
         """This solution instance is less than the *other* solution instance if
@@ -531,6 +531,10 @@ class Solution(object):
         :param other: Another solution.
         :type other: zoonomia.solution.Solution
 
+        :raise TypeError:
+            If this instance's *objectives* are unequal to *other*'s
+            objectives.
+
         :return:
             Whether this solution is dominated by the *other* solution and has
             equal objectives.
@@ -538,18 +542,4 @@ class Solution(object):
         :rtype: bool
 
         """
-        if self.objectives == other.objectives:
-            return other.dominates(self)
-        else:
-            return NotImplemented
-
-    def __le__(self, other):
-        """This comparison method has no meaning for solution instances.
-
-        :param other: Another solution.
-        :type other: zoonomia.solution.Solution
-
-        :return: NotImplemented
-
-        """
-        return NotImplemented
+        return other.dominates(self)
