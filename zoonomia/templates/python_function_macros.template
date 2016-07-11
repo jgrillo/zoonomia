@@ -1,0 +1,57 @@
+{# python_function_macros.template
+ #
+ # This template provides two macros, *call_function* and *write_function*,
+ # which can be used to write Python function calls and Python function
+ # definitions.
+ #
+ # NOTE: This template is designed to be used in an Environment configured with
+ # *lstrip_blocks=True* and *trim_blocks=True*.
+ #}
+
+{% set block_indent = "    " %}
+
+{# call_function(result_handle, call_obj)
+ #
+ # Args:
+ #   str result_handle: the handle to which the result will be assigned.
+ #   zoonomia.solution.Call call_obj:
+ #
+ # The *call_function* macro writes an expression which assigns the result of a
+ # Python function call specified by *call_obj* to a variable *result_handle*.
+ #}
+
+{% macro call_function(result_handle, call_obj) %}
+{% set call_obj_symbol = call_obj|attr("symbol") %}
+{{ result_handle }} = {{ call_obj_symbol|attr("name") ~ "(" }}{% for arg in call_obj|attr("args") %}
+        {% if loop.last %}{{ arg|attr("name") ~ ")" }}{% else %}{{ arg|attr("name") ~ ", " }}{% endif %}
+    {% endfor %}
+{% endmacro %}
+
+{# write_function(symbol, args, calls)
+ #
+ # Args:
+ #   zoonomia.solution.Symbol symbol:
+ #   tuple[zoonomia.solution.Symbol] args:
+ #   Iterable[zoonomia.solution.Call] calls:
+ #
+ # The *write_function* macro writes a Python function definition for a
+ # function having the name given by *symbol* and arguments given by *args*.
+ # The function body is formed iteratively by invoking the *call_function*
+ # macro on each Call object in *calls*.
+ #}
+
+{% macro write_function(symbol, args, calls) %}
+{{ "def " ~ symbol|attr("name") ~ "(" }}{% for arg in args %}
+    {% if loop.last %}{{ arg|attr("name") ~ "):\n" }}{% else %}{{ arg|attr("name") ~ ", " }}{% endif %}
+{% endfor %}
+{% for call_obj in calls %}
+{% set result_handle_symbol = call_obj|attr("target") %}
+{% set result_handle = result_handle_symbol|attr("name") %}
+{% if loop.last %}
+{{ block_indent ~ call_function(result_handle, call_obj) }}
+{{ block_indent ~ "return " ~ result_handle }}
+{% else %}
+{{ block_indent ~ call_function(result_handle, call_obj) }}
+{% endif %}
+{% endfor %}
+{% endmacro %}

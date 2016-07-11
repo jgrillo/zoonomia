@@ -1,60 +1,5 @@
 from zoonomia.tree import Node, Tree
-from zoonomia.solution import BasisOperator, Solution
-
-
-def build_types_possibility_table(
-    basis_set, terminal_set, max_depth, grow_=False
-):
-    """This function returns a "types possibility table" which, for each depth
-    :math:`d_{i} \in [1, ..., d_{max}]` gives the possible return types for a
-    tree of maximum depth :math:`i`. See Montana1995.
-
-    :param basis_set:
-        The OperatorSet of basis operators which, together with *terminal_set*,
-        satisfy the closure property.
-
-    :type basis_set: zoonomia.solution.OperatorSet[BasisOperator]
-
-    :param terminal_set:
-        The OperatorSet of terminal operators which, together with
-        *terminal_set*, satisfy the closure property.
-
-    :type terminal_set: zoonomia.solution.OperatorSet[TerminalOperator]
-
-    :param max_depth: The maximum tree depth from root to leaf.
-    :type max_depth: int
-
-    :param grow_:
-        Whether to generate a table for the *grow* method. Default is to
-        generate a table for the *full* method.
-
-    :type grow_: bool
-
-    :return:
-        A lookup table which for index :math:`i` provides a list of all the
-        possible return types for a tree of maximum depth :math:`i`.
-
-    :rtype: tuple[frozenset[type]]
-
-    """
-    table = [set() for _ in xrange(max_depth)]
-
-    for terminal in terminal_set:
-        if terminal.dtype not in table[0]:
-            table[0].add(terminal.dtype)
-
-    for idx in xrange(1, max_depth):
-        if grow_:
-            table[idx].update(table[idx - 1])
-
-        for basis in basis_set:
-            if (
-                all(dtype in table[idx - 1] for dtype in basis.signature) and
-                basis.dtype not in table[idx]
-            ):
-                table[idx].add(basis.dtype)
-
-    return tuple(map(frozenset, table))
+from zoonomia.solution import Solution
 
 
 def full(max_depth, basis_set, terminal_set, dtype, objectives, rng):
@@ -64,7 +9,9 @@ def full(max_depth, basis_set, terminal_set, dtype, objectives, rng):
     path length from root to leaf equal to :math:`d_{max}`. See Koza1992 and
     Montana1995.
 
-    :param max_depth: The maximum tree depth from root to leaf.
+    :param max_depth:
+        The maximum tree depth from root to leaf.
+
     :type max_depth: int
 
     :param basis_set:
@@ -72,29 +19,32 @@ def full(max_depth, basis_set, terminal_set, dtype, objectives, rng):
         satisfy the closure property.
 
     :type basis_set:
-        zoonomia.solution.BasisSet[zoonomia.solution.BasisOperator]
+        zoonomia.solution.OperatorSet[zoonomia.solution.Operator]
 
     :param terminal_set:
         The OperatorSet of terminal operators which, together with
         *terminal_set*, satisfy the closure property.
 
     :type terminal_set:
-        zoonomia.solution.TerminalSet[zoonomia.solution.TerminalOperator]
+        zoonomia.solution.OperatorSet[zoonomia.solution.Operator]
 
     :param dtype:
         The return type of the resulting solution's functional representation.
 
-    :type dtype: type
+    :type dtype: Type or GenericType or ParametrizedType
 
     :param objectives:
         The objectives that the resulting solution will be constructed with.
 
     :type objectives: tuple[zoonomia.solution.Objective]
 
-    :param rng: A random number generator instance.
+    :param rng:
+        A random number generator instance.
+
     :type rng: random.Random
 
     :return: A candidate solution.
+
     :rtype: zoonomia.solution.Solution
 
     """
@@ -116,20 +66,18 @@ def full(max_depth, basis_set, terminal_set, dtype, objectives, rng):
                 node = Node(
                     operator=rng.choice(terminal_set[t])
                 ) if depth == max_depth else Node(
-                    operator=rng.choice(basis_set[dtype])
+                    operator=rng.choice(basis_set[t])
                 )
 
                 children.append(node)
 
-                tree.add_edge(
-                    edge=Edge(parent=parent, child=node, position=idx)
-                )
+                parent.add_child(child=node, position=idx)
 
         parents = children
 
     tree = Tree(root=root)
 
-    return Solution(tree=tree, objectives=objectives)  # TODO: decouple Solution from Objectives?
+    return Solution(tree=tree, objectives=objectives)
 
 
 def grow(max_depth, basis_set, terminal_set, dtype, objectives, rng):
@@ -139,6 +87,7 @@ def grow(max_depth, basis_set, terminal_set, dtype, objectives, rng):
     to the interval :math:`[1, d_{max}]`. See Koza1992 and Montana1995.
 
     :param max_depth: The maximum tree depth from root to leaf.
+
     :type max_depth: int
 
     :param basis_set:
@@ -146,14 +95,14 @@ def grow(max_depth, basis_set, terminal_set, dtype, objectives, rng):
         satisfy the closure property.
 
     :type basis_set:
-        zoonomia.solution.BasisSet[zoonomia.solution.BasisOperator]
+        zoonomia.solution.OperatorSet[zoonomia.solution.Operator]
 
     :param terminal_set:
         The OperatorSet of terminal operators which, together with
         *basis_set*, satisfy the closure property.
 
     :type terminal_set:
-        zoonomia.solution.TerminalSet[zoonomia.solution.TerminalOperator]
+        zoonomia.solution.OperatorSet[zoonomia.solution.Operator]
 
     :param dtype:
         The return type of the resulting solution's functional representation.
@@ -166,9 +115,11 @@ def grow(max_depth, basis_set, terminal_set, dtype, objectives, rng):
     :type objectives: tuple[zoonomia.solution.Objective]
 
     :param rng: A random number generator instance.
+
     :type rng: random.Random
 
     :return: A candidate solution.
+
     :rtype: zoonomia.solution.Solution
 
     """
@@ -176,10 +127,7 @@ def grow(max_depth, basis_set, terminal_set, dtype, objectives, rng):
         node = Node(operator=rng.choice(terminal_set[dtype]))
     else:
         operator = rng.choice(basis_set.union(terminal_set)[dtype])
-        if isinstance(operator, BasisOperator):
-            node = Node(operator=operator)
-        else:
-            node = Node(operator=operator)
+        node = Node(operator=operator)
 
     root = node
     depth = 1
@@ -195,21 +143,17 @@ def grow(max_depth, basis_set, terminal_set, dtype, objectives, rng):
                     node = Node(operator=rng.choice(terminal_set[t]))
                 else:
                     operator = rng.choice(basis_set.union(terminal_set)[t])
-                    if isinstance(operator, BasisOperator):
-                        node = Node(operator=operator)
+                    node = Node(operator=operator)
+                    if node.left is not None:  # node contains a basis operator
                         children.append(node)
-                    else:
-                        node = Node(operator=operator)
 
-                tree.add_edge(
-                    edge=Edge(parent=parent, child=node, position=idx)
-                )
+                parent.add_child(child=node, position=idx)
 
         parents = children
 
     tree = Tree(root=root)
 
-    return Solution(tree=tree, objectives=objectives)  # TODO: decouple Solution from Objectives?
+    return Solution(tree=tree, objectives=objectives)
 
 
 def ramped_half_and_half(
@@ -219,9 +163,11 @@ def ramped_half_and_half(
     population initialization procedure. See Koza1992.
 
     :param max_depth: the max tree depth per individual.
+
     :type max_depth: int
 
     :param population_size: number of individuals in the population.
+
     :type population_size: int
 
     :param basis_set:
@@ -229,14 +175,14 @@ def ramped_half_and_half(
         satisfy the closure property.
 
     :type basis_set:
-        zoonomia.solution.BasisSet[zoonomia.solution.BasisOperator]
+        zoonomia.solution.OperatorSet[zoonomia.solution.Operator]
 
     :param terminal_set:
         The OperatorSet of terminal operators which, together with
         *basis_set*, satisfy the closure property.
 
     :type terminal_set:
-        zoonomia.solution.TerminalSet[zoonomia.solution.TerminalOperator]
+        zoonomia.solution.OperatorSet[zoonomia.solution.Operator]
 
     :param dtype:
         The return type of the resulting solutions' functional representations.
@@ -249,9 +195,11 @@ def ramped_half_and_half(
     :type objectives: tuple[zoonomia.solution.Objective]
 
     :param rng: A random number generator instance.
+
     :type rng: random.Random
 
     :return:
+
     :rtype: frozenset
 
     """
@@ -271,28 +219,43 @@ def ramped_half_and_half(
     )
 
 
-def mutate_subtree(solution):
+def mutate_subtree(solution, rng):
     """Perform subtree mutation on a solution, returning a new mutant solution.
 
     :param solution: A solution.
+
     :type solution: zoonomia.solution.Solution
+
+    :param rng: A random number generator instance.
+
+    :type rng: random.Random
 
     :return: A mutant solution.
 
     :rtype: zoonomia.solution.Solution
+
     """
-    raise NotImplementedError()  # FIXME: implement
+    dimensions = solution.tree.get_dimensions()
+    target_depth = rng.choice(xrange(len(dimensions)))
+    target_branch = dimensions[target_depth]
+    pass
 
 
-def mutate_node(solution):
+def mutate_node(solution, rng):
     """Perform a point mutation on a solution, returning a new mutant solution.
 
     :param solution: A solution.
+
     :type solution: zoonomia.solution.Solution
+
+    :param rng: A random number generator instance.
+
+    :type rng: random.Random
 
     :return: A mutant solution.
 
     :rtype: zoonomia.solution.Solution
+
     """
     raise NotImplementedError()  # FIXME: implement
 
@@ -309,6 +272,7 @@ def crossover_subtree(solution_1, solution_2):
     :return: Two mutant solution offspring.
 
     :rtype: tuple[zoonomia.solution.Solution]
+
     """
     raise NotImplementedError()  # FIXME: implement
 

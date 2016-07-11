@@ -1,334 +1,23 @@
 import unittest
-import mock
 import time
+import mock
 import logging
 
-from multiprocessing.pool import ThreadPool
-
+from concurrent.futures import ThreadPoolExecutor
 from zoonomia.tree import Node, Tree
-from zoonomia.solution import (
-    verify_closure_property, BasisOperator, TerminalOperator, OperatorSet,
-    Objective, Fitness, Solution
-)
+from zoonomia.solution import Objective, Fitness, Solution
+from zoonomia.types import Type
+from zoonomia.lang import Symbol, Call, Operator, OperatorSet
 
-logging.basicConfig()
+logging.basicConfig()  # FIXME: wat
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
+POOL = ThreadPoolExecutor(max_workers=100)
 
-class TestVerifyClosureProperty(unittest.TestCase):
 
-    def test_verify_closure_property(self):
-        """
-
-        """
-        def add(left, right): return left + right
-
-        int_basis = BasisOperator(func=add, signature=(int, int), dtype=int)
-        float_basis = BasisOperator(
-            func=add, signature=(float, float), dtype=float
-        )
-
-        int_terminal = TerminalOperator(source=xrange(666), dtype=int)
-        float_terminal = TerminalOperator(
-            source=(float(i) for i in xrange(666)), dtype=float
-        )
-
-        basis_set = OperatorSet(operators=(int_basis, float_basis))
-        terminal_set = OperatorSet(operators=(int_terminal, float_terminal))
-
-        result = verify_closure_property(
-            basis_set=basis_set, terminal_set=terminal_set
-        )
-
-        self.assertTrue(result)
-
-
-class TestBasisOperator(unittest.TestCase):
-
-    def test_basis_operator_attributes(self):
-        """Test that a BasisOperator instance has attributes which are
-        references to the data passed into the constructor.
-
-        """
-        def add(a, b): return a + b
-
-        signature = (int, int)
-        dtype = int
-
-        basis_operator = BasisOperator(
-            func=add, signature=signature, dtype=dtype
-        )
-
-        self.assertIs(basis_operator.func, add)
-        self.assertIs(basis_operator.signature, signature)
-        self.assertIs(basis_operator.dtype, dtype)
-
-    def test_basis_operator_hash(self):
-        """Test that two BasisOperators which are identically distinct yet
-        refer to the same data have identical hashes.
-
-        """
-        def add(a, b): return a + b
-
-        signature = (int, int)
-        dtype = int
-
-        basis_operator_1 = BasisOperator(
-            func=add, signature=signature, dtype=dtype
-        )
-
-        basis_operator_2 = BasisOperator(
-            func=add, signature=signature, dtype=dtype
-        )
-
-        self.assertEqual(hash(basis_operator_1), hash(basis_operator_2))
-
-    def test_basis_operator_equals(self):
-        """Test that two BasisOperators which are identically distinct yet
-        refer to the same data are equal.
-
-        """
-        def add(a, b): return a + b
-
-        signature = (int, int)
-        dtype = int
-
-        basis_operator_1 = BasisOperator(
-            func=add, signature=signature, dtype=dtype
-        )
-
-        basis_operator_2 = BasisOperator(
-            func=add, signature=signature, dtype=dtype
-        )
-
-        self.assertEqual(basis_operator_1, basis_operator_2)
-        self.assertEqual(basis_operator_2, basis_operator_1)
-
-    def test_basis_operator_not_equals(self):
-        """Test that two BasisOperators which do not refer to the same data are
-        unequal.
-
-        """
-        def add(a, b): return a + b
-
-        signature = (int, int)
-        dtype_1 = int
-        dtype_2 = float
-
-        basis_operator_1 = BasisOperator(
-            func=add, signature=signature, dtype=dtype_1
-        )
-
-        basis_operator_2 = BasisOperator(
-            func=add, signature=signature, dtype=dtype_2
-        )
-
-        self.assertNotEqual(basis_operator_1, basis_operator_2)
-        self.assertNotEqual(basis_operator_2, basis_operator_1)
-
-    def test_basis_operator_call(self):
-        """Test that calling a basis operator like a function produces the same
-        result as calling the basis operator's *func* attribute.
-
-        """
-        def add(a, b): return a + b
-
-        signature = (int, int)
-        dtype = int
-
-        basis_operator = BasisOperator(
-            func=add, signature=signature, dtype=dtype
-        )
-
-        self.assertEqual(add(6, 66), basis_operator(6, 66))
-
-
-class TestTerminalOperator(unittest.TestCase):
-
-    def test_terminal_operator_attributes(self):
-        """Test that a TerminalOperator instance has attributes which are
-        references to the data passed into its constructor.
-
-        """
-        source = xrange(666)
-        dtype = int
-
-        terminal_operator = TerminalOperator(source=source, dtype=dtype)
-
-        self.assertIs(terminal_operator.source, source)
-        self.assertIs(terminal_operator.dtype, dtype)
-
-    def test_terminal_operator_hash(self):
-        """Test that two TerminalOperators which are identically distinct yet
-        refer to the same data have identical hashes.
-
-        """
-        source = xrange(666)
-        dtype = int
-
-        terminal_operator_1 = TerminalOperator(source=source, dtype=dtype)
-        terminal_operator_2 = TerminalOperator(source=source, dtype=dtype)
-
-        self.assertEqual(hash(terminal_operator_1), hash(terminal_operator_2))
-
-    def test_terminal_operator_equals(self):
-        """Test that two TerminalOperators which are identically distinct yet
-        refer to the same data are equal.
-
-        """
-        source = xrange(666)
-        dtype = int
-
-        terminal_operator_1 = TerminalOperator(source=source, dtype=dtype)
-        terminal_operator_2 = TerminalOperator(source=source, dtype=dtype)
-
-        self.assertEqual(terminal_operator_1, terminal_operator_2)
-        self.assertEqual(terminal_operator_2, terminal_operator_1)
-
-    def test_terminal_operator_not_equals(self):
-        """Test that two TerminalOperators which do not refer to the same data
-        are unequal.
-
-        """
-        source = xrange(666)
-        dtype_1 = int
-        dtype_2 = float
-
-        terminal_operator_1 = TerminalOperator(source=source, dtype=dtype_1)
-        terminal_operator_2 = TerminalOperator(source=source, dtype=dtype_2)
-
-        self.assertNotEqual(terminal_operator_1, terminal_operator_2)
-        self.assertNotEqual(terminal_operator_2, terminal_operator_1)
-
-    def test_terminal_operator_iter(self):
-        """Test that an iterator over a TerminalOperator produces the same
-        results as an iterator over its *source* attribute.
-
-        """
-        source = xrange(666)
-        dtype = int
-
-        terminal_operator = TerminalOperator(source=source, dtype=dtype)
-
-        self.assertItemsEqual(
-            iter(terminal_operator.source), iter(terminal_operator)
-        )
-
-
-class TestOperatorSet(unittest.TestCase):
-
-    def test_operator_set_lookup(self):
-        """Test that an OperatorSet behaves as expected with respect to lookups
-        by *dtype* and *signature*.
-
-        """
-        def add(a, b): return a + b
-
-        basis_op_1 = BasisOperator(func=add, signature=(int, int), dtype=int)
-        basis_op_2 = BasisOperator(func=add, signature=(str, str), dtype=str)
-
-        terminal_op_1 = TerminalOperator(source=xrange(666), dtype=int)
-        terminal_op_2 = TerminalOperator(
-            source=(str(i) for i in xrange(666)), dtype=str
-        )
-
-        basis_set = OperatorSet(operators=(basis_op_1, basis_op_2))
-        terminal_set = OperatorSet(operators=(terminal_op_1, terminal_op_2))
-
-        self.assertSetEqual({basis_op_1, basis_op_2}, basis_set.operators)
-
-        self.assertSetEqual(basis_set[int], {basis_op_1})
-        self.assertSetEqual(basis_set[(int, int)], {basis_op_1})
-
-        self.assertSetEqual(basis_set[str], {basis_op_2})
-        self.assertSetEqual(basis_set[(str, str)], {basis_op_2})
-
-        self.assertSetEqual(
-            {terminal_op_1, terminal_op_2}, terminal_set.operators
-        )
-
-        self.assertSetEqual(terminal_set[int], {terminal_op_1})
-        self.assertSetEqual(terminal_set[str], {terminal_op_2})
-
-    def test_operator_set_union(self):
-        """Test that the union of two OperatorSets behaves as expected with
-        respect to lookups by *dtype* and *signature*.
-
-        """
-        def add(a, b): return a + b
-
-        basis_op_1 = BasisOperator(func=add, signature=(int, int), dtype=int)
-        basis_op_2 = BasisOperator(func=add, signature=(str, str), dtype=str)
-
-        terminal_op_1 = TerminalOperator(source=xrange(666), dtype=int)
-        terminal_op_2 = TerminalOperator(
-            source=(str(i) for i in xrange(666)), dtype=str
-        )
-
-        basis_set = OperatorSet(operators=(basis_op_1, basis_op_2))
-        terminal_set = OperatorSet(operators=(terminal_op_1, terminal_op_2))
-
-        basis_union_terminal = basis_set.union(terminal_set)
-        terminal_union_basis = terminal_set.union(basis_set)
-
-        self.assertSetEqual(
-            basis_union_terminal.operators, terminal_union_basis.operators
-        )
-
-        self.assertSetEqual(
-            {basis_op_1, basis_op_2, terminal_op_1, terminal_op_2},
-            basis_union_terminal.operators
-        )
-
-        self.assertSetEqual(
-            basis_union_terminal[int], terminal_union_basis[int]
-        )
-
-        self.assertSetEqual(
-            basis_union_terminal[int], {basis_op_1, terminal_op_1}
-        )
-
-        self.assertSetEqual(
-            basis_union_terminal[str], terminal_union_basis[str]
-        )
-
-        self.assertSetEqual(
-            basis_union_terminal[str], {basis_op_2, terminal_op_2}
-        )
-
-        self.assertSetEqual(
-            basis_union_terminal[(int, int)], terminal_union_basis[(int, int)]
-        )
-
-        self.assertSetEqual(
-            basis_union_terminal[(int, int)], {basis_op_1}
-        )
-
-        self.assertSetEqual(
-            basis_union_terminal[(str, str)], terminal_union_basis[(str, str)]
-        )
-
-        self.assertSetEqual(
-            basis_union_terminal[(str, str)], {basis_op_2}
-        )
-
-    def test_operator_set_iter(self):
-        """Test that an iterator over an OperatorSet yields the same items as
-        an iterator over its *operators* attribute.
-
-        """
-        def add(a, b): return a + b
-
-        basis_op_1 = BasisOperator(func=add, signature=(int, int), dtype=int)
-
-        terminal_op_1 = TerminalOperator(source=xrange(666), dtype=int)
-
-        operator_set = OperatorSet(operators=(basis_op_1, terminal_op_1))
-
-        self.assertItemsEqual(
-            operator_set.operators, iter(operator_set)
-        )
+def futures_map(fn, iterable):
+    return POOL.map(fn, iterable)
 
 
 class TestObjective(unittest.TestCase):
@@ -386,12 +75,14 @@ class TestObjective(unittest.TestCase):
         parameter multiplied by the result of calling the *eval_func*.
 
         """
-        def eval_func(sol): return 66.6
+        int_type = Type(name='int')
+
+        def eval_func(solution): return 66.6
 
         weight = 42.0
 
         objective = Objective(eval_func=eval_func, weight=weight)
-        terminal_op = TerminalOperator(source=xrange(666), dtype=int)
+        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
         root = Node(operator=terminal_op)
 
         solution = Solution(tree=Tree(root=root), objectives=(objective,))
@@ -407,12 +98,14 @@ class TestFitness(unittest.TestCase):
         refer to the data passed into the constructor.
 
         """
-        def eval_func(sol): return 66.6
+        int_type = Type(name='int')
+
+        def eval_func(solution): return 66.6
 
         weight = 42.0
 
         objective = Objective(eval_func=eval_func, weight=weight)
-        terminal_op = TerminalOperator(source=xrange(666), dtype=int)
+        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
         root = Node(operator=terminal_op)
 
         solution = Solution(tree=Tree(root=root), objectives=(objective,))
@@ -429,12 +122,14 @@ class TestFitness(unittest.TestCase):
         the same data have equal hashes.
 
         """
-        def eval_func(sol): return 66.6
+        int_type = Type(name='int')
+
+        def eval_func(solution): return 66.6
 
         weight = 42.0
 
         objective = Objective(eval_func=eval_func, weight=weight)
-        terminal_op = TerminalOperator(source=xrange(666), dtype=int)
+        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
         root = Node(operator=terminal_op)
 
         solution = Solution(tree=Tree(root=root), objectives=(objective,))
@@ -451,12 +146,14 @@ class TestFitness(unittest.TestCase):
         the same data are equal.
 
         """
-        def eval_func(sol): return 66.6
+        int_type = Type(name='int')
+
+        def eval_func(solution): return 66.6
 
         weight = 42.0
 
         objective = Objective(eval_func=eval_func, weight=weight)
-        terminal_op = TerminalOperator(source=xrange(666), dtype=int)
+        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
         root = Node(operator=terminal_op)
 
         solution = Solution(tree=Tree(root=root), objectives=(objective,))
@@ -474,12 +171,14 @@ class TestFitness(unittest.TestCase):
         are unequal.
 
         """
-        def eval_func(sol): return 66.6
+        int_type = Type(name='int')
+
+        def eval_func(solution): return 66.6
 
         weight = 42.0
 
         objective = Objective(eval_func=eval_func, weight=weight)
-        terminal_op = TerminalOperator(source=xrange(666), dtype=int)
+        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
         root = Node(operator=terminal_op)
 
         solution = Solution(tree=Tree(root=root), objectives=(objective,))
@@ -498,7 +197,7 @@ class TestFitness(unittest.TestCase):
         with score_2.
 
         """
-        def eval_func(sol): return 0.0  # only used for constructing objective
+        def eval_func(solution): return 0.0  # only used for constructing objective
 
         objective = Objective(eval_func=eval_func, weight=42.0)
 
@@ -513,7 +212,7 @@ class TestFitness(unittest.TestCase):
         to fitness_3 with score_3 == score_1.
 
         """
-        def eval_func(sol): return 0.0  # only used for constructing objective
+        def eval_func(solution): return 0.0  # only used for constructing objective
 
         objective = Objective(eval_func=eval_func, weight=42.0)
 
@@ -532,7 +231,7 @@ class TestFitness(unittest.TestCase):
         with score_2.
 
         """
-        def eval_func(sol): return 0.0  # only used for constructing objective
+        def eval_func(solution): return 0.0  # only used for constructing objective
 
         objective = Objective(eval_func=eval_func, weight=42.0)
 
@@ -547,7 +246,7 @@ class TestFitness(unittest.TestCase):
         fitness_3 with score_3 == score_1.
 
         """
-        def eval_func(sol): return 0.0  # only used for constructing objective
+        def eval_func(solution): return 0.0  # only used for constructing objective
 
         objective = Objective(eval_func=eval_func, weight=42.0)
 
@@ -569,11 +268,15 @@ class TestSolution(unittest.TestCase):
         refer to the data passed into the constructor.
 
         """
-        def eval_func(sol): return 66.6
+        int_type = Type(name='int')
+
+        def eval_func(solution): return 66.6
 
         objective = Objective(eval_func=eval_func, weight=42.0)
 
-        terminal_operator = TerminalOperator(source=xrange(666), dtype=int)
+        terminal_operator = Operator(
+            symbol=Symbol(name='term', dtype=int_type)
+        )
 
         root = Node(operator=terminal_operator)
 
@@ -591,23 +294,25 @@ class TestSolution(unittest.TestCase):
         the *objectives* parameter passed into the Solution's constructor.
 
         """
+        int_type = Type(name='int')
+
         self.maxDiff = None
 
-        pool = ThreadPool(processes=2)
-
-        def eval_func_1(sol):
+        def eval_func_1(solution):
             log.debug('Calling eval_func_1')
             time.sleep(0.01)  # eval_func_1 hopefully evaluated second
             return 66.6
 
-        def eval_func_2(sol):
+        def eval_func_2(solution):
             log.debug('Calling eval_func_2')
             return 66.7
 
         objective_1 = Objective(eval_func=eval_func_1, weight=42.0)
         objective_2 = Objective(eval_func=eval_func_2, weight=42.0)
 
-        terminal_operator = TerminalOperator(source=xrange(666), dtype=int)
+        terminal_operator = Operator(
+            symbol=Symbol(name='term', dtype=int_type)
+        )
 
         root = Node(operator=terminal_operator)
 
@@ -617,9 +322,7 @@ class TestSolution(unittest.TestCase):
             solution = Solution(
                 tree=tree,
                 objectives=(objective_1, objective_2),
-                map_=lambda f, s: pool.imap_unordered(
-                    func=f, iterable=s, chunksize=2
-                )
+                map_=futures_map
             )
             self.assertTupleEqual(
                 solution.evaluate(),
@@ -634,30 +337,34 @@ class TestSolution(unittest.TestCase):
         thread-safe manner.
 
         """
-        pool = ThreadPool(processes=100)
+        int_type = Type(name='int')
 
         eval_func = mock.Mock(return_value=66.6)
 
         objective = Objective(eval_func=eval_func, weight=42.0)
 
-        terminal_operator = TerminalOperator(source=xrange(666), dtype=int)
+        terminal_operator = Operator(
+            symbol=Symbol(name='term', dtype=int_type)
+        )
 
         root = Node(operator=terminal_operator)
 
         tree = Tree(root=root)
 
         solution = Solution(
-            tree=tree, objectives=(objective,), map_=pool.imap_unordered
+            tree=tree,
+            objectives=(objective,),
+            map_=futures_map
         )
 
         results = [
-            pool.apply_async(lambda s: s.evaluate(), (solution,))
+            POOL.submit(lambda s: s.evaluate(), solution)
             for _ in xrange(100)
         ]
 
         previous_result = None
         for idx, res in enumerate(results):
-            result = res.get()
+            result = res.result()
             if idx > 0:
                 self.assertEqual(result, previous_result)
             previous_result = result
@@ -669,6 +376,8 @@ class TestSolution(unittest.TestCase):
         solution Pareto-dominates another solution, and False otherwise.
 
         """
+        int_type = Type(name='int')
+
         eval_func_1 = mock.Mock(side_effect=[66.7, 66.6, 66.6])
         eval_func_2 = mock.Mock(side_effect=[66.6, 66.6, 66.6])
         eval_func_3 = mock.Mock(side_effect=[66.6, 66.6, 66.6])
@@ -677,7 +386,9 @@ class TestSolution(unittest.TestCase):
         objective_2 = Objective(eval_func=eval_func_2, weight=42.0)
         objective_3 = Objective(eval_func=eval_func_3, weight=42.0)
 
-        terminal_operator = TerminalOperator(source=xrange(666), dtype=int)
+        terminal_operator = Operator(
+            symbol=Symbol(name='term', dtype=int_type)
+        )
 
         root = Node(operator=terminal_operator)
 
@@ -725,13 +436,15 @@ class TestSolution(unittest.TestCase):
         equivalent trees and equivalent objectives have the same hash value.
 
         """
-        pool = ThreadPool(processes=2)
+        int_type = Type(name='int')
 
         eval_func = mock.Mock(return_value=66.6)
 
         objective = Objective(eval_func=eval_func, weight=42.0)
 
-        terminal_operator = TerminalOperator(source=xrange(666), dtype=int)
+        terminal_operator = Operator(
+            symbol=Symbol(name='term', dtype=int_type)
+        )
 
         root_1 = Node(operator=terminal_operator)
         root_2 = Node(operator=terminal_operator)
@@ -740,10 +453,14 @@ class TestSolution(unittest.TestCase):
         tree_2 = Tree(root=root_2)
 
         solution_1 = Solution(
-                tree=tree_1, objectives=(objective,), map_=pool.imap_unordered
+            tree=tree_1,
+            objectives=(objective,),
+            map_=futures_map
         )
         solution_2 = Solution(
-                tree=tree_2, objectives=(objective,), map_=pool.imap_unordered
+            tree=tree_2,
+            objectives=(objective,),
+            map_=futures_map
         )
 
         for _ in xrange(100):
@@ -755,18 +472,66 @@ class TestSolution(unittest.TestCase):
 
         self.assertEqual(eval_func.call_count, 2)
 
-    def test_solution_equals(self):
-        """Test that two identically distinct Solutions are equal if their
-        hashes are equal.
+    def test_solution_len(self):
+        """Test that a solution
 
         """
-        pool = ThreadPool(processes=2)
+        int_type = Type(name='int')
 
         eval_func = mock.Mock(return_value=66.6)
 
         objective = Objective(eval_func=eval_func, weight=42.0)
 
-        terminal_operator = TerminalOperator(source=xrange(666), dtype=int)
+        basis_operator = Operator(
+            symbol=Symbol(name='basis', dtype=int_type), signature=(int_type,)
+        )
+        terminal_operator = Operator(
+            symbol=Symbol(name='term', dtype=int_type)
+        )
+
+        root_1 = Node(operator=basis_operator)
+        root_2 = Node(operator=basis_operator)
+
+        node_1 = Node(operator=terminal_operator)
+        node_2 = Node(operator=terminal_operator)
+
+        root_1.add_child(child=node_1, position=0)
+        root_2.add_child(child=node_2, position=0)
+
+        tree_1 = Tree(root=root_1)
+        tree_2 = Tree(root=root_2)
+
+        solution_1 = Solution(
+            tree=tree_1,
+            objectives=(objective,),
+            map_=futures_map
+        )
+        solution_2 = Solution(
+            tree=tree_2,
+            objectives=(objective,),
+            map_=futures_map
+        )
+
+        for _ in xrange(100):
+            self.assertEqual(2, len(solution_1))
+            self.assertEqual(len(solution_1), len(solution_2))
+
+        eval_func.assert_not_called()
+
+    def test_solution_equals(self):
+        """Test that two identically distinct Solutions are equal if their
+        hashes are equal.
+
+        """
+        int_type = Type(name='int')
+
+        eval_func = mock.Mock(return_value=66.6)
+
+        objective = Objective(eval_func=eval_func, weight=42.0)
+
+        terminal_operator = Operator(
+            symbol=Symbol(name='term', dtype=int_type)
+        )
 
         root_1 = Node(operator=terminal_operator)
         root_2 = Node(operator=terminal_operator)
@@ -775,10 +540,14 @@ class TestSolution(unittest.TestCase):
         tree_2 = Tree(root=root_2)
 
         solution_1 = Solution(
-                tree=tree_1, objectives=(objective,), map_=pool.imap_unordered
+            tree=tree_1,
+            objectives=(objective,),
+            map_=futures_map
         )
         solution_2 = Solution(
-                tree=tree_2, objectives=(objective,), map_=pool.imap_unordered
+            tree=tree_2,
+            objectives=(objective,),
+            map_=futures_map
         )
 
         for _ in xrange(100):
@@ -795,13 +564,15 @@ class TestSolution(unittest.TestCase):
         """Test that two solutions are not equal if their hashes are not equal.
 
         """
-        pool = ThreadPool(processes=2)
+        int_type = Type(name='int')
 
         eval_func = mock.Mock(side_effect=[66.6, 66.7])
 
         objective = Objective(eval_func=eval_func, weight=42.0)
 
-        terminal_operator = TerminalOperator(source=xrange(666), dtype=int)
+        terminal_operator = Operator(
+            symbol=Symbol(name='term', dtype=int_type)
+        )
 
         root_1 = Node(operator=terminal_operator)
         root_2 = Node(operator=terminal_operator)
@@ -810,10 +581,14 @@ class TestSolution(unittest.TestCase):
         tree_2 = Tree(root=root_2)
 
         solution_1 = Solution(
-                tree=tree_1, objectives=(objective,), map_=pool.imap_unordered
+            tree=tree_1,
+            objectives=(objective,),
+            map_=futures_map
         )
         solution_2 = Solution(
-                tree=tree_2, objectives=(objective,), map_=pool.imap_unordered
+            tree=tree_2,
+            objectives=(objective,),
+            map_=futures_map
         )
 
         for _ in xrange(100):
@@ -821,7 +596,7 @@ class TestSolution(unittest.TestCase):
             self.assertNotEqual(solution_2, solution_1)
 
         eval_func.assert_has_calls(
-                calls=(mock.call(solution_1), mock.call(solution_2))
+            calls=(mock.call(solution_1), mock.call(solution_2))
         )
 
         self.assertEqual(eval_func.call_count, 2)
@@ -831,14 +606,20 @@ class TestSolution(unittest.TestCase):
         objectives is greater than the other solution.
 
         """
+        int_type = Type(name='int')
+
         eval_func_1 = mock.Mock(side_effect=[66.7, 66.6, 66.6])
         eval_func_2 = mock.Mock(side_effect=[66.6, 66.6, 66.6])
 
         objective_1 = Objective(eval_func=eval_func_1, weight=42.0)
         objective_2 = Objective(eval_func=eval_func_2, weight=42.0)
 
-        terminal_operator_1 = TerminalOperator(source=xrange(666), dtype=int)
-        terminal_operator_2 = TerminalOperator(source=xrange(666), dtype=int)
+        terminal_operator_1 = Operator(
+            symbol=Symbol(name='term1', dtype=int_type)
+        )
+        terminal_operator_2 = Operator(
+            symbol=Symbol(name='term2', dtype=int_type)
+        )
 
         root_1 = Node(operator=terminal_operator_1)
         root_2 = Node(operator=terminal_operator_2)
@@ -896,14 +677,20 @@ class TestSolution(unittest.TestCase):
         equal objectives is less than the other solution.
 
         """
+        int_type = Type(name='int')
+
         eval_func_1 = mock.Mock(side_effect=[66.6, 66.7, 66.7])
         eval_func_2 = mock.Mock(side_effect=[66.6, 66.6, 66.6])
 
         objective_1 = Objective(eval_func=eval_func_1, weight=42.0)
         objective_2 = Objective(eval_func=eval_func_2, weight=42.0)
 
-        terminal_operator_1 = TerminalOperator(source=xrange(666), dtype=int)
-        terminal_operator_2 = TerminalOperator(source=xrange(666), dtype=int)
+        terminal_operator_1 = Operator(
+            symbol=Symbol(name='term1', dtype=int_type)
+        )
+        terminal_operator_2 = Operator(
+            symbol=Symbol(name='term2', dtype=int_type)
+        )
 
         root_1 = Node(operator=terminal_operator_1)
         root_2 = Node(operator=terminal_operator_2)
@@ -961,6 +748,8 @@ class TestSolution(unittest.TestCase):
         built-in *sorted* function.
 
         """
+        int_type = Type(name='int')
+
         self.maxDiff = None
 
         eval_func_1 = mock.Mock(side_effect=[66.6, 66.7, 66.7, 66.8])
@@ -969,7 +758,9 @@ class TestSolution(unittest.TestCase):
         objective_1 = Objective(eval_func=eval_func_1, weight=42.0)
         objective_2 = Objective(eval_func=eval_func_2, weight=42.0)
 
-        terminal_operator = TerminalOperator(source=xrange(666), dtype=int)
+        terminal_operator = Operator(
+            symbol=Symbol(name='term', dtype=int_type)
+        )
 
         root = Node(operator=terminal_operator)
 

@@ -2,6 +2,7 @@
 *.egg-info
 *.eggs
 venv
+pypy-venv
 .idea
 build
 dist

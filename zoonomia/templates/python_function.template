@@ -1,0 +1,2 @@
+{% from "python_function_macros.template" import write_function %}
+{{ write_function(symbol, args, calls) }}
