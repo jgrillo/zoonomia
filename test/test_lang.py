@@ -359,21 +359,83 @@ class TestOperatorSet(unittest.TestCase):
         terminal_op_1 = Operator(symbol=Symbol(name='term1', dtype=int_type))
         terminal_op_2 = Operator(symbol=Symbol(name='term2', dtype=str_type))
 
-        basis_set = OperatorTable(operators=(basis_op_1, basis_op_2))
-        terminal_set = OperatorTable(operators=(terminal_op_1, terminal_op_2))
-
-        self.assertSetEqual({basis_op_1, basis_op_2}, basis_set.operators)
-
-        self.assertSetEqual(basis_set[int_type], {basis_op_1})
-
-        self.assertSetEqual(basis_set[str_type], {basis_op_2})
-
-        self.assertSetEqual(
-            {terminal_op_1, terminal_op_2}, terminal_set.operators
+        basis_operators = OperatorTable(operators=(basis_op_1, basis_op_2))
+        terminal_operators = OperatorTable(
+            operators=(terminal_op_1, terminal_op_2)
         )
 
-        self.assertSetEqual(terminal_set[int_type], {terminal_op_1})
-        self.assertSetEqual(terminal_set[str_type], {terminal_op_2})
+        self.assertSetEqual(
+            {basis_op_1, basis_op_2}, basis_operators.operators
+        )
+
+        self.assertSetEqual(basis_operators[int_type], {basis_op_1})
+
+        self.assertSetEqual(basis_operators[str_type], {basis_op_2})
+
+        self.assertSetEqual(
+            {terminal_op_1, terminal_op_2}, terminal_operators.operators
+        )
+
+        self.assertSetEqual(terminal_operators[int_type], {terminal_op_1})
+        self.assertSetEqual(terminal_operators[str_type], {terminal_op_2})
+
+    def test_operator_table_lookup_raises_KeyError_when_target_absent(self):
+        """Test that an OperatorTable raises KeyError when attempting to lookup
+        a *dtype* for which no operators exist in the OperatorTable whose
+        *dtype* can be resolved to the given *dtype*.
+
+        """
+        int_type = Type(name='int')
+        str_type = Type(name='str')
+        list_type = Type(name='List')
+        collection_type = GenericType(
+            name='Collection', contained_types=frozenset((list_type,))
+        )
+
+        op_1 = Operator(
+            symbol=Symbol(name='add', dtype=int_type),
+            signature=(int_type, int_type)
+        )
+        op_2 = Operator(
+            symbol=Symbol(name='add', dtype=str_type),
+            signature=(str_type, str_type)
+        )
+
+        operators = OperatorTable(operators=(op_1, op_2))
+
+        self.assertRaises(KeyError, lambda: operators[collection_type])
+
+    def test_operator_table_lookup_raises_TypeError_when_improper_type(self):
+        """Test that an OperatorTable raises TypeError when lookup by a key
+        which is not a Type, GenericType, or ParametrizedType is attempted.
+
+        """
+        int_type = Type(name='int')
+        str_type = Type(name='str')
+        list_type = Type(name='List')
+        collection_type = GenericType(
+            name='Collection', contained_types=frozenset((list_type,))
+        )
+        collection_of_ints_type = ParametrizedType(
+            name='Collection<int>',
+            base_type=collection_type,
+            parameter_types=(int_type,)
+        )
+
+        op_1 = Operator(
+            symbol=Symbol(name='add', dtype=int_type),
+            signature=(int_type, int_type)
+        )
+        op_2 = Operator(
+            symbol=Symbol(name='add', dtype=str_type),
+            signature=(str_type, str_type)
+        )
+
+        operators = OperatorTable(operators=(op_1, op_2))
+
+        self.assertRaises(KeyError, lambda: operators[collection_type])
+        self.assertRaises(KeyError, lambda: operators[collection_of_ints_type])
+        self.assertRaises(TypeError, lambda: operators[1])
 
     def test_operator_table_lookup_multiple_matches(self):
         """Test that a lookup on an OperatorTable produces the set of all
@@ -537,6 +599,99 @@ class TestOperatorSet(unittest.TestCase):
                 self.assertIn(terminal_operator_1, result[0])
                 self.assertIn(terminal_operator_1, result[1])
 
+    def test_operator_table_contains(self):
+        """Test that an OperatorTable contains operators whose return types can
+        be resolved to the given key type.
+
+        """
+        int_type = Type(name='Int')
+        float_type = Type(name='Float')
+        list_type = Type(name='List')
+        number_type = GenericType(
+            name='Number',
+            contained_types=frozenset((int_type, float_type))
+        )
+        collection_type = GenericType(
+            name='Collection', contained_types=frozenset((list_type,))
+        )
+        collection_of_numbers_type = ParametrizedType(
+            name='Collection<Number>',
+            base_type=collection_type,
+            parameter_types=(number_type,)
+        )
+
+        op_1 = Operator(
+            symbol=Symbol(name='add', dtype=float_type),
+            signature=(int_type, float_type)
+        )
+        op_2 = Operator(
+            symbol=Symbol(name='add', dtype=collection_type),
+            signature=(collection_type, collection_type)
+        )
+
+        operators = OperatorTable(operators=(op_1, op_2))
+
+        self.assertIn(collection_type, operators)
+        self.assertIn(float_type, operators)
+        self.assertNotIn(collection_of_numbers_type, operators)
+
+    def test_operator_table_implicit_contains(self):
+        """Test that an OperatorTable contains operators whose return types can
+        be resolved to the given key type, even when none of the operators has
+        that explicit return type.
+
+        """
+        int_type = Type(name='Int')
+        float_type = Type(name='Float')
+        list_type = Type(name='List')
+        number_type = GenericType(
+            name='Number',
+            contained_types=frozenset((int_type, float_type))
+        )
+        collection_type = GenericType(
+            name='Collection', contained_types=frozenset((list_type,))
+        )
+        collection_of_numbers_type = ParametrizedType(
+            name='Collection<Number>',
+            base_type=collection_type,
+            parameter_types=(number_type,)
+        )
+
+        op_1 = Operator(
+            symbol=Symbol(name='add', dtype=float_type),
+            signature=(int_type, float_type)
+        )
+        op_2 = Operator(
+            symbol=Symbol(name='add', dtype=collection_of_numbers_type),
+            signature=(collection_type, collection_type)
+        )
+
+        operators = OperatorTable(operators=(op_1, op_2))
+
+        self.assertIn(number_type, operators)
+        self.assertIn(collection_type, operators)
+
+    def test_operator_table_contains_raises_TypeError_when_improper_key(self):
+        """Test that OperatorTable raises TypeError when testing containment of
+        a key which is not a Type, GenericType, or ParametrizedType.
+
+        """
+        int_type = Type(name='Int')
+        float_type = Type(name='Float')
+
+        op_1 = Operator(
+            symbol=Symbol(name='add', dtype=float_type),
+            signature=(float_type, float_type)
+        )
+        op_2 = Operator(
+            symbol=Symbol(name='add', dtype=int_type),
+            signature=(int_type, int_type)
+        )
+
+        operators = OperatorTable(operators=(op_1, op_2))
+
+        self.assertRaises(TypeError, lambda: 1 in operators)
+
     def test_operator_table_union(self):
         """Test that the union of two OperatorSets behaves as expected with
         respect to lookups by *dtype* and *signature*.
@@ -557,11 +712,13 @@ class TestOperatorSet(unittest.TestCase):
         terminal_op_1 = Operator(symbol=Symbol(name='term1', dtype=int_type))
         terminal_op_2 = Operator(symbol=Symbol(name='term2', dtype=str_type))
 
-        basis_set = OperatorTable(operators=(basis_op_1, basis_op_2))
-        terminal_set = OperatorTable(operators=(terminal_op_1, terminal_op_2))
+        basis_operators = OperatorTable(operators=(basis_op_1, basis_op_2))
+        terminal_operators = OperatorTable(
+            operators=(terminal_op_1, terminal_op_2)
+        )
 
-        basis_union_terminal = basis_set.union(terminal_set)
-        terminal_union_basis = terminal_set.union(basis_set)
+        basis_union_terminal = basis_operators.union(terminal_operators)
+        terminal_union_basis = terminal_operators.union(basis_operators)
 
         self.assertSetEqual(
             basis_union_terminal.operators, terminal_union_basis.operators

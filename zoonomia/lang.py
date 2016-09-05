@@ -230,7 +230,9 @@ class OperatorTable(object):
     def __new__(cls, operators):
         """An OperatorTable contains Operators and also provides a convenient
         mapping which allows a user to select the subset of operators having
-        output types which can be resolved to a particular type.
+        output types which can be resolved to a particular type. This object is
+        more or less modeled after Montana's *types possibility table*. See
+        Montana1995.
 
         :param operators:
             An iterable of Operators to initialize this instance with.
@@ -294,55 +296,82 @@ class OperatorTable(object):
         """
         return iter(self.operators)
 
-    def __getitem__(self, item):
-        """Select those Operators which have *dtype* that can be resolved to
-        *item*. That is, select all the Operators whose return type is
-        contained by *item*.
+    def __getitem__(self, dtype):
+        """Select those Operators for which the give *dtype* can be resolved to
+        their *dtype*. That is, select all the Operators whose return type is
+        contained by *dtype*.
 
-        :param item: A type.
+        :param dtype: A type.
 
-        :type item: zoonomia.types.Type or zoonomia.types.GenericType
+        :type dtype: Type | GenericType | ParametrizedType
 
         :raise KeyError:
-            If the given *item* has no associated operators in this
+            If the given *dtype* has no associated operators in this
             OperatorTable.
 
         :raise TypeError:
-            If *item* is not a Type, GenericType, or ParametrizedType.
+            If *dtype* is not a Type, GenericType, or ParametrizedType.
 
         :return:
-            The operators belonging to this OperatorTable which match the
-            signature or dtype *item*.
+            The Operators belonging to this OperatorTable for which the given
+            *dtype* can be resolved to their return *dtype*.
 
         :rtype: frozenset[Operator]
 
         """
-        if isinstance(item, (Type, GenericType, ParametrizedType)):
-            if item not in self._dtype_to_operators.keys():
+        if isinstance(dtype, (Type, GenericType, ParametrizedType)):
+            if dtype in self:
+                return self._dtype_to_operators[dtype]
+            else:
+                raise KeyError(dtype)
+        else:
+            raise TypeError(
+                'dtype must be a Type, GenericType, or ParametrizedType'
+            )
+
+    def __contains__(self, dtype):
+        """Check whether this OperatorTable contains any Operators
+        corresponding to the given *dtype*.
+
+        :param dtype: A type.
+
+        :type dtype: Type | GenericType | ParametrizedType
+
+        :raise TypeError:
+            If *dtype* is not a Type, GenericType, or ParametrizedType.
+
+        :return:
+            Whether this OperatorTable contains any Operators for which the
+            given *dtype* can be resolved to their return *dtype*.
+
+        :rtype: bool
+
+        """
+        if isinstance(dtype, (Type, GenericType, ParametrizedType)):
+            if dtype not in self._dtype_to_operators:
                 with self._lock:
                     ts = self._dtype_to_operators.keys()
 
-                    if item not in ts:
+                    if dtype not in ts:
                         contains = False
                         resolved_types = []
 
                         for t in ts:
-                            if t in item:  # item can be resolved to t
+                            if t in dtype:  # dtype can be resolved to t
                                 contains = True
+
                                 for o in self._dtype_to_operators[t]:
                                     resolved_types.append(o)
 
                         if contains:
-                            self._dtype_to_operators[item] = frozenset(
+                            self._dtype_to_operators[dtype] = frozenset(
                                 resolved_types
                             )
-                        else:
-                            raise KeyError(item)
 
-            return self._dtype_to_operators[item]
+            return dtype in self._dtype_to_operators
         else:
             raise TypeError(
-                'item must be a Type, GenericType, or ParametrizedType'
+                'dtype must be a Type, GenericType, or ParametrizedType'
             )
 
     def __repr__(self):

@@ -18,14 +18,14 @@ def full(
 
     :param basis_operators:
         The OperatorTable of basis operators which, together with
-        *terminal_set*, satisfy the closure property.
+        *terminal_operators*, satisfy the closure property.
 
     :type basis_operators:
         zoonomia.solution.OperatorTable[zoonomia.solution.Operator]
 
     :param terminal_operators:
         The OperatorTable of terminal operators which, together with
-        *terminal_set*, satisfy the closure property.
+        *terminal_operators*, satisfy the closure property.
 
     :type terminal_operators:
         zoonomia.solution.OperatorTable[zoonomia.solution.Operator]
@@ -103,7 +103,7 @@ def grow(
 
     :param terminal_operators:
         The OperatorTable of terminal operators which, together with
-        *basis_set*, satisfy the closure property.
+        *basis_operators*, satisfy the closure property.
 
     :type terminal_operators:
         zoonomia.solution.OperatorTable[zoonomia.solution.Operator]
@@ -186,7 +186,7 @@ def ramped_half_and_half(
 
     :param terminal_operators:
         The OperatorTable of terminal operators which, together with
-        *basis_set*, satisfy the closure property.
+        *basis_operators*, satisfy the closure property.
 
     :type terminal_operators:
         zoonomia.solution.OperatorTable[zoonomia.solution.Operator]
