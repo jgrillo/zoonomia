@@ -7,7 +7,7 @@ class Symbol(object):
 
     __slots__ = ('name', 'dtype', '_hash')
 
-    def __init__(self, name, dtype):
+    def __new__(cls, name, dtype):
         """A Symbol instance represents some data *symbol* in an alien
         execution environment.
 
@@ -22,9 +22,21 @@ class Symbol(object):
         :type dtype: Type or GenericType or ParametrizedType
 
         """
+        obj = super(Symbol, cls).__new__(cls)
+        obj.name = name
+        obj.dtype = dtype
+        obj._hash = hash((obj.name, obj.dtype))
+        return obj
+
+    def __getstate__(self):
+        return self.name, self.dtype, self._hash
+
+    def __setstate__(self, state):
+        name, dtype, _hash = state
+
         self.name = name
         self.dtype = dtype
-        self._hash = hash((self.name, self.dtype))
+        self._hash = _hash
 
     def __hash__(self):
         return self._hash
@@ -45,7 +57,7 @@ class Call(object):
 
     __slots__ = ('target', 'symbol', 'args', 'dtype', '_operator', '_hash')
 
-    def __init__(self, target, operator, args):
+    def __new__(cls, target, operator, args):
         """A Call instance represents a function call in an alien execution
         environment. A Call associates an Operator having a particular type
         *signature* and a tuple of concrete arguments *args* of the
@@ -70,14 +82,32 @@ class Call(object):
         :type args: tuple[zoonomia.solution.Symbol]
 
         """
-        self.target = target
-        self.dtype = operator.dtype
-        self.symbol = operator.symbol
-        self._operator = operator
-        self.args = args
-        self._hash = hash(
-            (self.target, self.dtype, self.symbol, self._operator, self.args)
+        obj = super(Call, cls).__new__(cls)
+        obj.target = target
+        obj.dtype = operator.dtype
+        obj.symbol = operator.symbol
+        obj._operator = operator
+        obj.args = args
+        obj._hash = hash(
+            (obj.target, obj.dtype, obj.symbol, obj._operator, obj.args)
         )
+        return obj
+
+    def __getstate__(self):
+        return (
+            self.target, self.symbol, self.args, self.dtype, self._operator,
+            self._hash
+        )
+
+    def __setstate__(self, state):
+        target, symbol, args, dtype, _operator, _hash = state
+
+        self.target = target
+        self.symbol = symbol
+        self.args = args
+        self.dtype = dtype
+        self._operator = _operator
+        self._hash = _hash
 
     def __hash__(self):
         return self._hash
@@ -102,7 +132,7 @@ class Operator(object):
 
     __slots__ = ('symbol', 'signature', 'dtype', '_hash')
 
-    def __init__(self, symbol, signature=tuple()):
+    def __new__(cls, symbol, signature=tuple()):
         """An Operator is an abstraction over some underlying function, perhaps
         in an alien programming language or environment, which takes arguments
         conforming to the given type *signature* and returns a value of type
@@ -122,10 +152,23 @@ class Operator(object):
         :type signature: tuple[Type|ParametrizedType|GenericType]
 
         """
+        obj = super(Operator, cls).__new__(cls)
+        obj.symbol = symbol
+        obj.signature = signature
+        obj.dtype = symbol.dtype
+        obj._hash = hash((obj.symbol, obj.signature, obj.dtype))
+        return obj
+
+    def __getstate__(self):
+        return self.symbol, self.signature, self.dtype, self._hash
+
+    def __setstate__(self, state):
+        symbol, signature, dtype, _hash = state
+
         self.symbol = symbol
         self.signature = signature
-        self.dtype = symbol.dtype
-        self._hash = hash((self.symbol, self.signature, self.dtype))
+        self.dtype = dtype
+        self._hash = _hash
 
     def __hash__(self):
         return self._hash
@@ -180,12 +223,12 @@ class Operator(object):
             raise TypeError('must specify target if not a terminal operator')
 
 
-class OperatorSet(object):
+class OperatorTable(object):
 
-    __slots__ = ('operators', '_dtype_to_operators', '_lock')
+    __slots__ = ('operators', '_dtype_to_operators', '_lock', '_hash')
 
-    def __init__(self, operators):
-        """An OperatorSet contains Operators and also provides a convenient
+    def __new__(cls, operators):
+        """An OperatorTable contains Operators and also provides a convenient
         mapping which allows a user to select the subset of operators having
         output types which can be resolved to a particular type.
 
@@ -195,27 +238,51 @@ class OperatorSet(object):
         :type operators: collections.Iterable[zoonomia.solution.Operator]
 
         """
-        self.operators = frozenset(operators)
-        self._lock = Lock()
-        self._dtype_to_operators = dict()
+        obj = super(OperatorTable, cls).__new__(cls)
+        obj.operators = frozenset(operators)
+        obj._lock = Lock()
+        obj._dtype_to_operators = dict()
+        obj._hash = hash(obj.operators)
 
-        for operator in self.operators:
-            self._dtype_to_operators[operator.dtype] = frozenset(
-                o for o in self.operators if o.dtype in operator.dtype
+        for operator in obj.operators:
+            obj._dtype_to_operators[operator.dtype] = frozenset(
+                o for o in obj.operators if o.dtype in operator.dtype
             )
 
+        return obj
+
+    def __getstate__(self):
+        return self.operators, self._dtype_to_operators, self._hash
+
+    def __setstate__(self, state):
+        operators, _dtype_to_operators, _hash = state
+
+        self.operators = operators
+        self._lock = Lock()
+        self._dtype_to_operators = _dtype_to_operators
+        self._hash = _hash
+
+    def __hash__(self):
+        return self._hash
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    def __ne__(self, other):
+        return hash(self) != hash(other)
+
     def union(self, other):
-        """Returns an OperatorSet containing those elements which are in the
-        union of both this OperatorSet and the other OperatorSet.
+        """Returns an OperatorSet containing those elements which are members
+        of both this OperatorSet and the other OperatorSet.
 
         :param other: Another OperatorSet.
-        :type other: zoonomia.lang.OperatorSet
+        :type other: zoonomia.lang.OperatorTable
 
         :return: An OperatorSet
         :rtype: zoonomia.solution.OperatorSet
 
         """
-        return OperatorSet(
+        return OperatorTable(
             operators=self.operators.union(other.operators)
         )
 
@@ -238,13 +305,13 @@ class OperatorSet(object):
 
         :raise KeyError:
             If the given *item* has no associated operators in this
-            OperatorSet.
+            OperatorTable.
 
         :raise TypeError:
             If *item* is not a Type, GenericType, or ParametrizedType.
 
         :return:
-            The operators belonging to this OperatorSet which match the
+            The operators belonging to this OperatorTable which match the
             signature or dtype *item*.
 
         :rtype: frozenset[Operator]
@@ -260,11 +327,10 @@ class OperatorSet(object):
                         resolved_types = []
 
                         for t in ts:
-                            if t in item:  # t can be resolved to item
+                            if t in item:  # item can be resolved to t
                                 contains = True
-                                resolved_types.append(
-                                    self._dtype_to_operators[t]
-                                )
+                                for o in self._dtype_to_operators[t]:
+                                    resolved_types.append(o)
 
                         if contains:
                             self._dtype_to_operators[item] = frozenset(
@@ -280,6 +346,6 @@ class OperatorSet(object):
             )
 
     def __repr__(self):
-        return 'OperatorSet({0})'.format(
+        return 'OperatorTable({0})'.format(
             '{' + ', '.join(map(repr, self.operators)) + '}'
         )

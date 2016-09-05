@@ -20,7 +20,7 @@ parameters any time we were to substitute a *Type* for a *ParametrizedType*.
 
 One could, it seems, make the argument that a *ParametrizedType* is more
 general than a *Type* in the sense that a *ParametrizedType* has more "degrees
-of freedom" than a *Type*--that is, there are many more possible
+of freedom" than a *Type*--that is, there are probably more than one possible
 *ParametrizedTypes* that can be contained by another *ParametrizedType*. By
 this somewhat shaky argument we claim that *ParametrizedType* is more general
 than *Type*.
@@ -71,7 +71,7 @@ class Type(object):
 
     __slots__ = ('name', 'meta', '_hash')
 
-    def __init__(self, name, meta=None):
+    def __new__(cls, name, meta=None):
         """A Type instance represents a base type in Zoonomia's type system. A
         Type is distinguished from other Types by its name and metadata.
 
@@ -86,9 +86,20 @@ class Type(object):
         :type meta: object
 
         """
+        obj = super(Type, cls).__new__(cls)
+        obj.name = name
+        obj.meta = meta
+        obj._hash = hash((obj.name, obj.meta))
+        return obj
+
+    def __getstate__(self):
+        return self.name, self.meta, self._hash
+
+    def __setstate__(self, state):
+        name, meta, _hash = state
         self.name = name
         self.meta = meta
-        self._hash = hash((self.name, self.meta))
+        self._hash = _hash
 
     def __hash__(self):
         return self._hash
@@ -101,7 +112,7 @@ class Type(object):
 
     def __contains__(self, candidate):
         """Check whether this type can be resolved to the candidate type. This
-        is equivalent to checking equality between this type and the candidate,
+        is similar to checking equality between this type and the candidate,
         but it's implemented for symmetry with GenericType and
         ParametrizedType.
 
@@ -139,7 +150,7 @@ class ParametrizedType(object):
 
     __slots__ = ('name', 'base_type', 'parameter_types', 'meta', '_hash')
 
-    def __init__(self, name, base_type, parameter_types, meta=None):
+    def __new__(cls, name, base_type, parameter_types, meta=None):
         """A ParametrizedType is constructed with a name, a GenericType or Type
         *base_type*, a tuple[ParametrizedType|GenericType|Type]
         *parameter_types*, and (optionally) some metadata.
@@ -165,13 +176,30 @@ class ParametrizedType(object):
         :type parameter_types: tuple[ParametrizedType|GenericType|Type]
 
         """
+        obj = super(ParametrizedType, cls).__new__(cls)
+        obj.name = name
+        obj.base_type = base_type
+        obj.parameter_types = parameter_types
+        obj.meta = meta
+        obj._hash = hash(
+            (obj.name, obj.base_type, obj.parameter_types, obj.meta)
+        )
+        return obj
+
+    def __getstate__(self):
+        return (
+            self.name, self.base_type, self.parameter_types, self.meta,
+            self._hash
+        )
+
+    def __setstate__(self, state):
+        name, base_type, parameter_types, meta, _hash = state
+
         self.name = name
         self.base_type = base_type
         self.parameter_types = parameter_types
         self.meta = meta
-        self._hash = hash(
-            (self.name, self.base_type, self.parameter_types, self.meta)
-        )
+        self._hash = _hash
 
     def __hash__(self):
         return self._hash
@@ -236,7 +264,7 @@ class GenericType(object):
 
     __slots__ = ('name', 'contained_types', 'meta', '_hash')
 
-    def __init__(self, name, contained_types, meta=None):
+    def __new__(cls, name, contained_types, meta=None):
         """A generic type is constructed with a name and a frozenset of
         *contained_types*. The *contained_types* represent the set of possible
         types to which this generic can be resolved.
@@ -259,10 +287,23 @@ class GenericType(object):
         :type meta: object
 
         """
+        obj = super(GenericType, cls).__new__(cls)
+        obj.name = name
+        obj.contained_types = contained_types
+        obj.meta = meta
+        obj._hash = hash((obj.name, obj.contained_types, obj.meta))
+        return obj
+
+    def __getstate__(self):
+        return self.name, self.contained_types, self.meta, self._hash
+
+    def __setstate__(self, state):
+        name, contained_types, meta, _hash = state
+
         self.name = name
         self.contained_types = contained_types
         self.meta = meta
-        self._hash = hash((self.name, self.contained_types, self.meta))
+        self._hash = _hash
 
     def __hash__(self):
         return self._hash
@@ -299,7 +340,12 @@ class GenericType(object):
             if candidate == self:
                 return True
             else:
-                return any(candidate in t for t in self.contained_types)
+                if any(candidate in t for t in self.contained_types):
+                    return True
+                elif all(t in self for t in candidate.contained_types):
+                    return True
+                else:
+                    return False
         else:
             raise TypeError(
                 'candidate must be a Type, GenericType, or ParametrizedType'

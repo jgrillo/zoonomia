@@ -1,8 +1,7 @@
 import unittest
-import random
 import mock
 
-from zoonomia.lang import Symbol, Operator, OperatorSet
+from zoonomia.lang import Symbol, Operator, OperatorTable
 from zoonomia.types import Type, GenericType, ParametrizedType
 from zoonomia.operations import (
     full, grow, ramped_half_and_half, mutate_subtree, mutate_node,
@@ -14,7 +13,8 @@ from zoonomia.solution import Solution, Objective
 
 class TestFull(unittest.TestCase):
 
-    def test_full_max_depth_1(self):
+    @mock.patch('random.Random')
+    def test_full_max_depth_1(self, MockRandom):
         """Test that the full tree generation strategy returns a type-safe
         depth zero tree for max_depth=1.
 
@@ -63,13 +63,10 @@ class TestFull(unittest.TestCase):
             signature=()
         )
 
-        rng = random.Random()
-        rng.choice = mock.Mock(return_value=terminal_0)
+        basis_operators = OperatorTable(operators=(basis_0,))
+        terminal_operators = OperatorTable(operators=(terminal_0, terminal_1))
 
-        basis_set = OperatorSet(operators=(basis_0,))
-        terminal_set = OperatorSet(operators=(terminal_0, terminal_1))
-
-        root = Node(operator=terminal_0)
+        root = Node(operator=terminal_1)
 
         objective = Objective(eval_func=lambda s: 666, weight=0.666)
 
@@ -78,11 +75,14 @@ class TestFull(unittest.TestCase):
             tree=expected_tree, objectives=(objective,)
         )
 
+        rng = MockRandom.return_value
+        rng.choice = mock.MagicMock(return_value=terminal_1)
+
         self.assertEqual(
             full(
                 max_depth=1,
-                basis_set=basis_set,
-                terminal_set=terminal_set,
+                basis_operators=basis_operators,
+                terminal_operators=terminal_operators,
                 dtype=collection_type,
                 objectives=(objective,),
                 rng=rng
@@ -90,7 +90,10 @@ class TestFull(unittest.TestCase):
             expected_solution
         )
 
-    def test_full_max_depth_2(self):
+        rng.choice.assert_called_once_with(terminal_operators[collection_type])
+
+    @mock.patch('random.Random')
+    def test_full_max_depth_2(self, MockRandom):
         """Test that the full tree generation strategy returns a type-safe
         depth one tree for max_depth=2.
 
@@ -139,11 +142,11 @@ class TestFull(unittest.TestCase):
             signature=()
         )
 
-        rng = random.Random()
-        rng.choice = mock.Mock(side_effect=[basis_0, terminal_0, terminal_1])
+        rng = MockRandom.return_value
+        rng.choice = mock.Mock(side_effect=[basis_0, terminal_1, terminal_0])
 
-        basis_set = OperatorSet(operators=(basis_0,))
-        terminal_set = OperatorSet(operators=(terminal_0, terminal_1))
+        basis_operators = OperatorTable(operators=(basis_0,))
+        terminal_operators = OperatorTable(operators=(terminal_0, terminal_1))
 
         root = Node(operator=basis_0)
         root.add_child(child=Node(operator=terminal_1), position=0)
@@ -159,8 +162,8 @@ class TestFull(unittest.TestCase):
         self.assertEqual(
             full(
                 max_depth=2,
-                basis_set=basis_set,
-                terminal_set=terminal_set,
+                basis_operators=basis_operators,
+                terminal_operators=terminal_operators,
                 dtype=collection_type,
                 objectives=(objective,),
                 rng=rng
@@ -168,14 +171,180 @@ class TestFull(unittest.TestCase):
             expected_solution
         )
 
+        rng.choice.assert_has_calls(
+            [
+                mock.call(basis_operators[collection_type]),
+                mock.call(terminal_operators[collection_of_numbers]),
+                mock.call(terminal_operators[str_type])
+            ],
+            any_order=False
+        )
+        self.assertEqual(3, rng.choice.call_count)
+
 
 class TestGrow(unittest.TestCase):
 
-    def test_grow_max_depth_1(self):
-        raise NotImplementedError()  # FIXME
+    @mock.patch('random.Random')
+    def test_grow_max_depth_1(self, MockRandom):
+        int_type = Type(name='Int')
+        float_type = Type(name='Float')
+        str_type = Type(name='Str')
 
-    def test_grow_max_depth_2(self):
-        raise NotImplementedError()  # FIXME
+        list_type = Type(name='List')
+        set_type = Type(name='Set')
+
+        collection_type = GenericType(
+            name='Collection',
+            contained_types=frozenset((list_type, set_type))
+        )
+
+        number_type = GenericType(
+            name='Number',
+            contained_types=frozenset((int_type, float_type))
+        )
+
+        collection_of_numbers = ParametrizedType(
+            name='Collection<Number>',
+            base_type=collection_type,
+            parameter_types=(number_type,)
+        )
+
+        collection_of_floats = ParametrizedType(
+            name='Collection<Float>',
+            base_type=collection_type,
+            parameter_types=(float_type,)
+        )
+
+        basis_0 = Operator(
+            symbol=Symbol(name='basis_0', dtype=collection_type),
+            signature=(collection_of_numbers, str_type)
+        )
+
+        terminal_0 = Operator(
+            symbol=Symbol(name='terminal_0', dtype=str_type),
+            signature=()
+        )
+
+        terminal_1 = Operator(
+            symbol=Symbol(name='terminal_1', dtype=collection_of_floats),
+            signature=()
+        )
+
+        basis_operators = OperatorTable(operators=(basis_0,))
+        terminal_operators = OperatorTable(operators=(terminal_0, terminal_1))
+
+        root = Node(operator=terminal_1)
+
+        objective = Objective(eval_func=lambda s: 666, weight=0.666)
+
+        expected_tree = Tree(root=root)
+        expected_solution = Solution(
+            tree=expected_tree, objectives=(objective,)
+        )
+
+        rng = MockRandom.return_value
+        rng.choice = mock.MagicMock(return_value=terminal_1)
+
+        self.assertEqual(
+            grow(
+                max_depth=1,
+                basis_operators=basis_operators,
+                terminal_operators=terminal_operators,
+                dtype=collection_type,
+                objectives=(objective,),
+                rng=rng
+            ),
+            expected_solution
+        )
+
+        rng.choice.assert_called_once_with(terminal_operators[collection_type])
+
+    @mock.patch('random.Random')
+    def test_grow_max_depth_2(self, MockRandom):
+        int_type = Type(name='Int')
+        float_type = Type(name='Float')
+        str_type = Type(name='Str')
+
+        list_type = Type(name='List')
+        set_type = Type(name='Set')
+
+        collection_type = GenericType(
+            name='Collection',
+            contained_types=frozenset((list_type, set_type))
+        )
+
+        number_type = GenericType(
+            name='Number',
+            contained_types=frozenset((int_type, float_type))
+        )
+
+        collection_of_numbers = ParametrizedType(
+            name='Collection<Number>',
+            base_type=collection_type,
+            parameter_types=(number_type,)
+        )
+
+        collection_of_floats = ParametrizedType(
+            name='Collection<Float>',
+            base_type=collection_type,
+            parameter_types=(float_type,)
+        )
+
+        basis_0 = Operator(
+            symbol=Symbol(name='basis_0', dtype=collection_type),
+            signature=(collection_of_numbers, str_type)
+        )
+
+        terminal_0 = Operator(
+            symbol=Symbol(name='terminal_0', dtype=str_type),
+            signature=()
+        )
+
+        terminal_1 = Operator(
+            symbol=Symbol(name='terminal_1', dtype=collection_of_floats),
+            signature=()
+        )
+
+        rng = MockRandom.return_value
+        rng.choice = mock.Mock(side_effect=[basis_0, terminal_1, terminal_0])
+
+        basis_operators = OperatorTable(operators=(basis_0,))
+        terminal_operators = OperatorTable(operators=(terminal_0, terminal_1))
+
+        root = Node(operator=basis_0)
+        root.add_child(child=Node(operator=terminal_1), position=0)
+        root.add_child(child=Node(operator=terminal_0), position=1)
+
+        objective = Objective(eval_func=lambda s: 666, weight=0.666)
+
+        expected_tree = Tree(root=root)
+        expected_solution = Solution(
+            tree=expected_tree, objectives=(objective,)
+        )
+
+        self.assertEqual(
+            grow(
+                max_depth=2,
+                basis_operators=basis_operators,
+                terminal_operators=terminal_operators,
+                dtype=collection_type,
+                objectives=(objective,),
+                rng=rng
+            ),
+            expected_solution
+        )
+
+        rng.choice.assert_has_calls(
+            [
+                mock.call(
+                    terminal_operators.union(basis_operators)[collection_type]
+                ),
+                mock.call(terminal_operators[collection_of_numbers]),
+                mock.call(terminal_operators[str_type])
+            ],
+            any_order=False
+        )
+        self.assertEqual(3, rng.choice.call_count)
 
 
 class TestRampedHalfAndHalf(unittest.TestCase):

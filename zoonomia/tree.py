@@ -95,15 +95,13 @@ class Node(object):
     """
 
     __slots__ = (
-        'operator', 'dtype', 'left', '_right', 'right', 'depth', '_hash',
-        '_n_children', '_lock'
+        'operator', 'dtype', 'left', '_right', 'right', '_hash', 'depth'
     )
 
-    def __init__(self, operator):
-        """A node has a unique identity and holds a reference to an operator.
-        Optionally, a node can hold references to child nodes provided that
-        those child nodes' operators' dtypes match this node's operator's
-        signature.
+    def __new__(cls, operator):
+        """A node holds a reference to an operator. Optionally, a node can hold
+        references to child nodes provided that those child nodes' operators'
+        dtypes match this node's operator's signature.
 
         :param operator:
             A reference to the operator to associate with this node.
@@ -111,15 +109,33 @@ class Node(object):
         :type operator: zoonomia.lang.Operator
 
         """
+        obj = super(Node, cls).__new__(cls)
+        obj.operator = operator
+        obj.dtype = obj.operator.dtype
+        obj.left = None
+        obj._right = [None for _ in xrange(len(obj.operator.signature) - 1)]
+        obj.right = None
+        obj.depth = 0
+
+        obj._hash = hash((obj.operator, obj.left, obj.right, obj.depth))
+        return obj
+
+    def __getstate__(self):
+        return (
+            self.operator, self.dtype, self.left, self._right, self.right,
+            self._hash, self.depth
+        )
+
+    def __setstate__(self, state):
+        operator, dtype, left, _right, right, _hash, depth = state
+
         self.operator = operator
-        self.dtype = operator.dtype
-        self.left = None
-        self._right = None
-        self.right = None
-        self.depth = 0
-        self._hash = hash((self.operator, self.dtype))
-        self._n_children = 0
-        self._lock = RLock()
+        self.dtype = dtype
+        self.left = left
+        self._right = _right
+        self.right = right
+        self._hash = _hash
+        self.depth = depth
 
     def add_child(self, child, position):
         """Add a child to this node corresponding to a *position* in the
@@ -146,13 +162,13 @@ class Node(object):
             given position.
 
         """
-        # TODO: devise locking strategy to limit to one call per signature site
-        if self.operator.signature[position] not in child.dtype:
+        if child.dtype not in self.operator.signature[position]:
             raise TypeError(
                 (
-                    'child dtype {0} does not match signature at position {1}'
+                    'child dtype {0} does not match operator {1} signature at '
+                    'position {2}'
                 ).format(
-                    child.dtype, position
+                    repr(child.dtype), repr(self.operator), position
                 )
             )
         elif position == 0:
@@ -163,12 +179,9 @@ class Node(object):
                     None for _ in xrange(len(self.operator.signature) - 1)
                 ]
             self._right[position - 1] = child
-            self.right = tuple(r for r in reversed(self._right))
+            self.right = tuple(reversed(self._right))
         child.depth = self.depth + 1
-        self._n_children += 1
-        self._hash = hash(
-            (self._n_children, self._hash, hash(child.operator), position)
-        )
+        self._hash = hash((self.operator, self.left, self.right, self.depth))
 
     def __hash__(self):
         """Compute the integer hashcode for this node instance.
@@ -191,12 +204,13 @@ class Node(object):
 
     def __repr__(self):
         return (
-            'Node(id={id}, operator={operator}, left={left}, right={right})'
+            'Node(operator={operator}, left={left}, right={right}, '
+            'depth={depth})'
         ).format(
-            id={repr(id(self))},
             operator=repr(self.operator),
             left=repr(self.left),
-            right=repr(self.right)
+            right=repr(self.right),
+            depth=repr(self.depth)
         )
 
 
@@ -216,7 +230,7 @@ class Tree(object):
 
     __slots__ = ('root', 'dtype', '_dimensions', '_lock', '_hash')
 
-    def __init__(self, root):
+    def __new__(cls, root):
         """A Tree instance is a thin wrapper around a tree data structure
         composed of Nodes that supports post-order depth-first iteration over
         all the nodes. You should ensure that the tree data structure is
@@ -229,11 +243,25 @@ class Tree(object):
         :type root: zoonomia.tree.Node
 
         """
+        obj = super(Tree, cls).__new__(cls)
+        obj.root = root
+        obj.dtype = root.dtype
+        obj._dimensions = None
+        obj._lock = RLock()
+        obj._hash = None
+        return obj
+
+    def __getstate__(self):
+        return self.root, self.dtype, self._dimensions, self._hash
+
+    def __setstate__(self, state):
+        root, dtype, _dimensions, _hash = state
+
         self.root = root
-        self.dtype = root.dtype
-        self._dimensions = None
+        self.dtype = dtype
+        self._dimensions = _dimensions
         self._lock = RLock()
-        self._hash = None
+        self._hash = _hash
 
     def __iter__(self):
         """Returns a post-order depth-first iterator over all nodes in this
@@ -382,3 +410,6 @@ class Tree(object):
 
     def __ne__(self, other):
         return hash(self) != hash(other)
+
+    def __repr__(self):
+        return 'Tree(root={root})'.format(root=repr(self.root))

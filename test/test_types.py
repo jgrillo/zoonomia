@@ -1,4 +1,4 @@
-
+import pickle
 import unittest
 
 from zoonomia.types import Type, ParametrizedType, GenericType
@@ -23,6 +23,18 @@ class TestType(unittest.TestCase):
         self.assertNotEqual(hash(type1), hash(type2))
         self.assertNotEqual(type1, type2)
         self.assertNotEqual(type2, type1)
+
+    def test_type_pickle(self):
+        """Test that a Type instance can be pickled and unpickled using the
+        default protocol.
+
+        """
+        type1 = Type(name='one', meta='meta')
+
+        pickled_type = pickle.dumps(type1)
+        unpickled_type = pickle.loads(pickled_type)
+
+        self.assertEqual(type1, unpickled_type)
 
     def test_type_contains__returns_True_when_types_equal(self):
         """Test that a Type contains another Type when the Types are equal."""
@@ -122,6 +134,24 @@ class TestParametrizedType(unittest.TestCase):
         )
         self.assertNotEqual(parametrized_type_1, parametrized_type_2)
         self.assertNotEqual(parametrized_type_2, parametrized_type_1)
+
+    def test_parametrized_type_pickle(self):
+        """Test that a ParametrizedType instance can be pickled and unpickled
+        using the default protocol.
+
+        """
+        plain_type = Type(name='one', meta='meta')
+        parametrized_type = ParametrizedType(
+            name='ParametrizedType1',
+            base_type=plain_type,
+            parameter_types=(plain_type,),
+            meta='meta'
+        )
+
+        pickled_parametrized_type = pickle.dumps(parametrized_type)
+        unpickled_parametrized_type = pickle.loads(pickled_parametrized_type)
+
+        self.assertEqual(parametrized_type, unpickled_parametrized_type)
 
     def test_parametrized_type_contains_when_equal(self):
         """Test that a ParametrizedType contains another ParametrizedType when
@@ -362,21 +392,159 @@ class TestParametrizedType(unittest.TestCase):
         self.assertNotIn(parametrized_type, generic_parametrized_type)
         self.assertNotIn(generic_parametrized_type, parametrized_type)
 
-    def test_parametrized_type_contains_with_generic_parameter(self):
+    def test_parametrized_type_contains_with_one_generic_parameter(self):
+        """Test that a ParametrizedType p0 contains another ParametrizedType p1
+        when p0.base_type is a Type which is contained in p1.base_type, a
+        GenericType.
+
+        """
+        int_type = Type(name='Int')
+        float_type = Type(name='Float')
+
+        list_type = Type(name='List')
+        set_type = Type(name='Set')
+
+        number_type = GenericType(
+            name='Number',
+            contained_types=frozenset((int_type, float_type))
+        )
+        collection_type = GenericType(
+            name='Collection',
+            contained_types=frozenset((list_type, set_type))
+        )
+
+        collection_of_numbers_type = ParametrizedType(
+            name='Collection<Number>',
+            base_type=collection_type,
+            parameter_types=(number_type,)
+        )
+
+        collection_of_ints_type = ParametrizedType(
+            name='Collection<Int>',
+            base_type=collection_type,
+            parameter_types=(int_type,)
+        )
+
+        self.assertIn(collection_of_ints_type, collection_of_numbers_type)
+
+    def test_parametrized_type_not_contains_with_one_generic_parameter(self):
+        """Test that a ParametrizedType p0 does not contain another
+        ParametrizedType p1 when p0.base_type is a Type which is not contained
+        in p1.base_type, a GenericType.
+
+        """
+        int_type = Type(name='Int')
+        float_type = Type(name='Float')
+        str_type = Type(name='Str')
+
+        list_type = Type(name='List')
+        set_type = Type(name='Set')
+
+        number_type = GenericType(
+            name='Number',
+            contained_types=frozenset((int_type, float_type))
+        )
+        collection_type = GenericType(
+            name='Collection',
+            contained_types=frozenset((list_type, set_type))
+        )
+
+        collection_of_numbers_type = ParametrizedType(
+            name='Collection<Number>',
+            base_type=collection_type,
+            parameter_types=(number_type,)
+        )
+
+        collection_of_strs_type = ParametrizedType(
+            name='Collection<Str>',
+            base_type=collection_type,
+            parameter_types=(str_type,)
+        )
+
+        self.assertNotIn(collection_of_strs_type, collection_of_numbers_type)
+
+    def test_parametrized_type_contains_with_two_generic_parameters(self):
         """Test that a ParametrizedType p0 contains another ParametrizedType p1
         when p0.base_type is a GenericType which is contained in p1.base_type,
         a GenericType.
 
         """
-        pass
+        int_type = Type(name='Int')
+        float_type = Type(name='Float')
 
-    def test_parametrized_type_not_contains_with_generic_parameter(self):
+        list_type = Type(name='List')
+        set_type = Type(name='Set')
+
+        number_type = GenericType(
+            name='Number',
+            contained_types=frozenset((int_type, float_type))
+        )
+        integer_type = GenericType(
+            name='Integer',
+            contained_types=frozenset((int_type,))
+        )
+        collection_type = GenericType(
+            name='Collection',
+            contained_types=frozenset((list_type, set_type))
+        )
+
+        collection_of_numbers_type = ParametrizedType(
+            name='Collection<Number>',
+            base_type=collection_type,
+            parameter_types=(number_type,)
+        )
+
+        collection_of_integers_type = ParametrizedType(
+            name='Collection<Integer>',
+            base_type=collection_type,
+            parameter_types=(integer_type,)
+        )
+
+        self.assertIn(integer_type, number_type)
+        self.assertIn(collection_of_integers_type, collection_of_numbers_type)
+
+    def test_parametrized_type_not_contains_with_two_generic_parameters(self):
         """Test that a ParametrizedType p0 does not contain another
         ParametrizedType p1 when p0.base_type is a GenericType which is not
         contained in p1.base_type, a GenericType.
 
         """
-        pass
+        int_type = Type(name='Int')
+        float_type = Type(name='Float')
+        str_type = Type(name='Str')
+
+        list_type = Type(name='List')
+        set_type = Type(name='Set')
+
+        number_type = GenericType(
+            name='Number',
+            contained_types=frozenset((int_type, float_type))
+        )
+        string_type = GenericType(
+            name='String',
+            contained_types=frozenset((str_type,))
+        )
+        collection_type = GenericType(
+            name='Collection',
+            contained_types=frozenset((list_type, set_type))
+        )
+
+        collection_of_numbers_type = ParametrizedType(
+            name='Collection<Number>',
+            base_type=collection_type,
+            parameter_types=(number_type,)
+        )
+
+        collection_of_strings_type = ParametrizedType(
+            name='Collection<String>',
+            base_type=collection_type,
+            parameter_types=(string_type,)
+        )
+
+        self.assertNotIn(string_type, number_type)
+        self.assertNotIn(
+            collection_of_strings_type, collection_of_numbers_type
+        )
 
     def test_parametrized_type_does_not_contain_Type(self):
         """Test that a ParametrizedType does not contain a Type"""
@@ -465,6 +633,23 @@ class TestGenericType(unittest.TestCase):
         self.assertNotEqual(hash(generic_type_1), hash(generic_type_2))
         self.assertNotEqual(generic_type_1, generic_type_2)
         self.assertNotEqual(generic_type_2, generic_type_1)
+
+    def test_generic_type_pickle(self):
+        """Test that a GenericType instance can be pickled and unpickled using
+        the default protocol.
+
+        """
+        type1 = Type(name='one', meta='meta')
+        generic_type = GenericType(
+            name='GenericType',
+            contained_types=frozenset((type1,)),
+            meta='meta'
+        )
+
+        pickled_generic_type = pickle.dumps(generic_type)
+        unpickled_generic_type = pickle.loads(pickled_generic_type)
+
+        self.assertEqual(generic_type, unpickled_generic_type)
 
     def test_generic_type_contains_equal_generic_type(self):
         """Test that a GenericType contains another GenericType if the two
@@ -670,7 +855,7 @@ class TestGenericType(unittest.TestCase):
         )
 
         self.assertIn(generic_type_1, generic_type_2)
-        self.assertNotIn(generic_type_2, generic_type_1)
+        self.assertIn(generic_type_2, generic_type_1)
 
     def test_generic_type_not_contains_other(self):
         """Test that a GenericType does not contain another GenericType when
@@ -683,7 +868,7 @@ class TestGenericType(unittest.TestCase):
 
         generic_type_1 = GenericType(
             name='GenericType1',
-            contained_types=frozenset((type1, type2)),
+            contained_types=frozenset((type2,)),
             meta='meta'
         )
         generic_type_2 = GenericType(

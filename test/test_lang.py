@@ -1,11 +1,11 @@
 import unittest
-import mock
+import pickle
 
 from concurrent.futures import ThreadPoolExecutor
 
 from zoonomia.types import Type, GenericType, ParametrizedType
 from zoonomia.lang import (
-    Symbol, Call, Operator, OperatorSet
+    Symbol, Call, Operator, OperatorTable
 )
 
 
@@ -28,6 +28,18 @@ class TestSymbol(unittest.TestCase):
         self.assertNotEqual(hash(symbol1), hash(symbol2))
         self.assertNotEqual(symbol1, symbol2)
         self.assertNotEqual(symbol2, symbol1)
+
+    def test_symbol_pickle(self):
+        """Test that a Symbol instance can be pickled and unpickled using the
+        default protocol.
+
+        """
+        symbol = Symbol(name='symbol', dtype=Type(name='type'))
+
+        pickled_symbol = pickle.dumps(symbol)
+        unpickled_symbol = pickle.loads(pickled_symbol)
+
+        self.assertEqual(symbol, unpickled_symbol)
 
 
 class TestCall(unittest.TestCase):
@@ -79,6 +91,26 @@ class TestCall(unittest.TestCase):
         self.assertNotEqual(hash(call1), hash(call2))
         self.assertNotEqual(call1, call2)
         self.assertNotEqual(call2, call1)
+
+    def test_call_pickle(self):
+        """Test that a Call instance can be pickled and unpickled using the
+        default protocol.
+
+        """
+        some_type = Type(name='some_type')
+
+        symbol = Symbol(name='symbol', dtype=some_type)
+        operator = Operator(symbol=symbol)
+        call = Call(
+            target=Symbol(name='target', dtype=some_type),
+            operator=operator,
+            args=()
+        )
+
+        pickled_call = pickle.dumps(call)
+        unpickled_call = pickle.loads(pickled_call)
+
+        self.assertEqual(call, unpickled_call)
 
 
 class TestOperator(unittest.TestCase):
@@ -138,6 +170,24 @@ class TestOperator(unittest.TestCase):
 
         self.assertEqual(basis_operator_1, basis_operator_2)
         self.assertEqual(basis_operator_2, basis_operator_1)
+
+    def test_operator_pickle(self):
+        """Test that an Operator inctance can be pickled and unpickled using
+        the default protocol.
+
+        """
+        int_type = Type(name='int')
+        signature = (int_type, int_type)
+        dtype = int_type
+
+        basis_operator = Operator(
+            symbol=Symbol(name='add', dtype=dtype), signature=signature
+        )
+
+        pickled_operator = pickle.dumps(basis_operator)
+        unpickled_operator = pickle.loads(pickled_operator)
+
+        self.assertEqual(basis_operator, unpickled_operator)
 
     def test_operator_not_equals(self):
         """Test that two Operators which do not refer to the same data are
@@ -215,8 +265,8 @@ class TestOperator(unittest.TestCase):
 
 class TestOperatorSet(unittest.TestCase):
 
-    def test_operator_set_lookup(self):
-        """Test that an OperatorSet acts legit wrt lookups by *dtype*."""
+    def test_operator_table_equals(self):
+        """Test that two OperatorSets with equal hashes are equal."""
         int_type = Type(name='int')
         str_type = Type(name='str')
 
@@ -232,8 +282,85 @@ class TestOperatorSet(unittest.TestCase):
         terminal_op_1 = Operator(symbol=Symbol(name='term1', dtype=int_type))
         terminal_op_2 = Operator(symbol=Symbol(name='term2', dtype=str_type))
 
-        basis_set = OperatorSet(operators=(basis_op_1, basis_op_2))
-        terminal_set = OperatorSet(operators=(terminal_op_1, terminal_op_2))
+        operator_table_1 = OperatorTable(
+            operators=(basis_op_1, basis_op_2, terminal_op_1, terminal_op_2)
+        )
+        operator_table_2 = OperatorTable(
+            operators=(basis_op_1, basis_op_2, terminal_op_1, terminal_op_2)
+        )
+
+        self.assertEqual(hash(operator_table_1), hash(operator_table_2))
+        self.assertEqual(operator_table_1, operator_table_2)
+        self.assertEqual(operator_table_2, operator_table_1)
+
+    def test_operator_table_not_equals(self):
+        """Test that two OperatorSets with unequal hashes are not equal."""
+        int_type = Type(name='int')
+        str_type = Type(name='str')
+
+        basis_op_1 = Operator(
+            symbol=Symbol(name='add', dtype=int_type),
+            signature=(int_type, int_type)
+        )
+        basis_op_2 = Operator(
+            symbol=Symbol(name='add', dtype=str_type),
+            signature=(str_type, str_type)
+        )
+
+        terminal_op_1 = Operator(symbol=Symbol(name='term1', dtype=int_type))
+        terminal_op_2 = Operator(symbol=Symbol(name='term2', dtype=str_type))
+
+        operator_table_1 = OperatorTable(
+            operators=(basis_op_1, basis_op_2, terminal_op_1)
+        )
+        operator_table_2 = OperatorTable(
+            operators=(basis_op_1, basis_op_2, terminal_op_2)
+        )
+
+        self.assertNotEqual(hash(operator_table_1), hash(operator_table_2))
+        self.assertNotEqual(operator_table_1, operator_table_2)
+        self.assertNotEqual(operator_table_2, operator_table_1)
+
+    def test_operator_table_pickle(self):
+        """Test that an OperatorTable instance can be pickled and unpickled using
+        the default protocol.
+
+        """
+        int_type = Type(name='int')
+        str_type = Type(name='str')
+
+        basis_op = Operator(
+            symbol=Symbol(name='add', dtype=int_type),
+            signature=(int_type, str_type)
+        )
+        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
+
+        operator_table = OperatorTable(operators=(basis_op, terminal_op))
+
+        pickled_operator_table = pickle.dumps(operator_table)
+        unpickled_operator_table = pickle.loads(pickled_operator_table)
+
+        self.assertEqual(operator_table, unpickled_operator_table)
+
+    def test_operator_table_lookup(self):
+        """Test that an OperatorTable acts legit wrt lookups by *dtype*."""
+        int_type = Type(name='int')
+        str_type = Type(name='str')
+
+        basis_op_1 = Operator(
+            symbol=Symbol(name='add', dtype=int_type),
+            signature=(int_type, int_type)
+        )
+        basis_op_2 = Operator(
+            symbol=Symbol(name='add', dtype=str_type),
+            signature=(str_type, str_type)
+        )
+
+        terminal_op_1 = Operator(symbol=Symbol(name='term1', dtype=int_type))
+        terminal_op_2 = Operator(symbol=Symbol(name='term2', dtype=str_type))
+
+        basis_set = OperatorTable(operators=(basis_op_1, basis_op_2))
+        terminal_set = OperatorTable(operators=(terminal_op_1, terminal_op_2))
 
         self.assertSetEqual({basis_op_1, basis_op_2}, basis_set.operators)
 
@@ -248,8 +375,117 @@ class TestOperatorSet(unittest.TestCase):
         self.assertSetEqual(terminal_set[int_type], {terminal_op_1})
         self.assertSetEqual(terminal_set[str_type], {terminal_op_2})
 
-    def test_operator_set_implicit_lookup(self):
-        """Test that a lookup on an OperatorSet works when the OperatorSet
+    def test_operator_table_lookup_multiple_matches(self):
+        """Test that a lookup on an OperatorTable produces the set of all
+        operators such that the lookup type can be resolved to each operator's
+        return type.
+
+        """
+        int_type = Type(name='Int')
+        float_type = Type(name='Float')
+        string_type = Type(name='String')
+
+        list_type = Type(name='List')
+        set_type = Type(name='Set')
+
+        collection_type = GenericType(
+            name='Collection',
+            contained_types=frozenset((list_type, set_type))
+        )
+
+        number_type = GenericType(
+            name='Number',
+            contained_types=frozenset((int_type, float_type))
+        )
+
+        collection_of_numbers_type = ParametrizedType(
+            name='Collection<Number>',
+            base_type=collection_type,
+            parameter_types=(number_type,)
+        )
+
+        collection_of_floats_type = ParametrizedType(
+            name='Collection<Float>',
+            base_type=collection_type,
+            parameter_types=(float_type,)
+        )
+
+        collection_of_strings_type = ParametrizedType(
+            name='Collection<String>',
+            base_type=collection_type,
+            parameter_types=(string_type,)
+        )
+
+        # collection_of_numbers_type and collection_of_floats_type can be
+        # resolved to collection_type, as can collection_of_strings_type
+        self.assertIn(collection_of_numbers_type, collection_type)
+        self.assertIn(collection_of_floats_type, collection_type)
+        self.assertIn(collection_of_strings_type, collection_type)
+        # collection_of_floats_type can be resolved to
+        # collection_of_numbers_type, but collection_of_strings can't
+        self.assertIn(collection_of_floats_type, collection_of_numbers_type)
+        self.assertNotIn(
+            collection_of_strings_type, collection_of_numbers_type
+        )
+
+        terminal_operator_0 = Operator(
+            symbol=Symbol(
+                name='terminal_operator_0', dtype=collection_type
+            ),
+            signature=()
+        )
+        terminal_operator_1 = Operator(
+            symbol=Symbol(
+                name='terminal_operator_1', dtype=collection_of_numbers_type
+            ),
+            signature=()
+        )
+        terminal_operator_2 = Operator(
+            symbol=Symbol(
+                name='terminal_operator_2', dtype=collection_of_floats_type
+            ),
+            signature=()
+        )
+        terminal_operator_3 = Operator(
+            symbol=Symbol(
+                name='terminal_operator_3', dtype=collection_of_strings_type
+            )
+        )
+
+        operator_table = OperatorTable(
+            operators=(
+                terminal_operator_0, terminal_operator_1, terminal_operator_2,
+                terminal_operator_3
+            )
+        )
+
+        self.assertSetEqual(
+            frozenset(
+                (
+                    terminal_operator_0, terminal_operator_1,
+                    terminal_operator_2, terminal_operator_3
+                )
+            ),
+            operator_table[collection_type]
+        )
+
+        self.assertSetEqual(
+            frozenset((terminal_operator_1, terminal_operator_2)),
+            operator_table[collection_of_numbers_type]
+        )
+
+        self.assertSetEqual(
+            frozenset((terminal_operator_2,)),
+            operator_table[collection_of_floats_type]
+        )
+
+        self.assertSetEqual(
+            frozenset((terminal_operator_3,)),
+            operator_table[collection_of_strings_type]
+        )
+
+    def test_operator_table_implicit_lookup(self):
+        """Test that a lookup on an OperatorTable works when the OperatorTable
         isn't explicitly initialized with some type, yet one of its elements
         contains that type.
 
@@ -278,36 +514,30 @@ class TestOperatorSet(unittest.TestCase):
         # collection_of_numbers_type can be resolved to collection_type
         self.assertIn(collection_of_numbers_type, collection_type)
 
-        terminal_operator_0 = Operator(
-            symbol=Symbol(
-                name='terminal_operator_0', dtype=collection_type
-            ),
-            signature=()
-        )
         terminal_operator_1 = Operator(
             symbol=Symbol(
-                name='terminal_operator_0', dtype=collection_of_numbers_type
+                name='terminal_operator_1', dtype=collection_of_numbers_type
             ),
             signature=()
         )
-        operator_set = OperatorSet(operators=(terminal_operator_0,))
+        operator_table = OperatorTable(operators=(terminal_operator_1,))
 
         with ThreadPoolExecutor(max_workers=100) as pool:
             futures = [
                 pool.submit(
                     lambda: (
-                        operator_set[terminal_operator_0.dtype],
-                        operator_set[terminal_operator_1.dtype]
+                        operator_table[collection_type],
+                        operator_table[terminal_operator_1.dtype]
                     )
                 ) for _ in xrange(1000)
             ]
 
             for fut in futures:
                 result = fut.result()
-                self.assertIs(terminal_operator_0, result[0])
-                self.assertIs(terminal_operator_1, result[1])
+                self.assertIn(terminal_operator_1, result[0])
+                self.assertIn(terminal_operator_1, result[1])
 
-    def test_operator_set_union(self):
+    def test_operator_table_union(self):
         """Test that the union of two OperatorSets behaves as expected with
         respect to lookups by *dtype* and *signature*.
 
@@ -327,8 +557,8 @@ class TestOperatorSet(unittest.TestCase):
         terminal_op_1 = Operator(symbol=Symbol(name='term1', dtype=int_type))
         terminal_op_2 = Operator(symbol=Symbol(name='term2', dtype=str_type))
 
-        basis_set = OperatorSet(operators=(basis_op_1, basis_op_2))
-        terminal_set = OperatorSet(operators=(terminal_op_1, terminal_op_2))
+        basis_set = OperatorTable(operators=(basis_op_1, basis_op_2))
+        terminal_set = OperatorTable(operators=(terminal_op_1, terminal_op_2))
 
         basis_union_terminal = basis_set.union(terminal_set)
         terminal_union_basis = terminal_set.union(basis_set)
@@ -358,8 +588,8 @@ class TestOperatorSet(unittest.TestCase):
             basis_union_terminal[str_type], {basis_op_2, terminal_op_2}
         )
 
-    def test_operator_set_iter(self):
-        """Test that an iterator over an OperatorSet yields the same items as
+    def test_operator_table_iter(self):
+        """Test that an iterator over an OperatorTable yields the same items as
         an iterator over its *operators* attribute.
 
         """
@@ -372,8 +602,8 @@ class TestOperatorSet(unittest.TestCase):
 
         terminal_op_1 = Operator(symbol=Symbol(name='term1', dtype=int_type))
 
-        operator_set = OperatorSet(operators=(basis_op_1, terminal_op_1))
+        operator_table = OperatorTable(operators=(basis_op_1, terminal_op_1))
 
         self.assertItemsEqual(
-            operator_set.operators, iter(operator_set)
+            operator_table.operators, iter(operator_table)
         )

@@ -1,4 +1,5 @@
 import unittest
+import pickle
 
 from zoonomia.tree import (
     Node, Tree, calls_iter, symbols_iter
@@ -241,6 +242,42 @@ class TestNode(unittest.TestCase):
 
         self.assertNotEqual(node_1, node_2)
         self.assertNotEqual(node_2, node_1)
+
+    def test_node_pickle(self):
+        """Test that a Node instance can be pickled and unpickled using the
+        default protocol.
+
+        """
+        some_type = Type(name='SomeType')
+        signature = (some_type, some_type)
+        dtype = some_type
+
+        basis_op_0 = Operator(
+            symbol=Symbol('func_0', dtype=dtype), signature=signature
+        )
+        basis_op_1 = Operator(
+            symbol=Symbol('func_1', dtype=dtype), signature=signature
+        )
+        terminal_op_0 = Operator(symbol=Symbol(name='term_0', dtype=dtype))
+        terminal_op_1 = Operator(symbol=Symbol(name='term_1', dtype=dtype))
+        terminal_op_2 = Operator(symbol=Symbol(name='term_2', dtype=dtype))
+
+        root = Node(operator=basis_op_0)
+        basis_node = Node(operator=basis_op_1)
+        terminal_node_0 = Node(operator=terminal_op_0)
+        terminal_node_1 = Node(operator=terminal_op_1)
+        terminal_node_2 = Node(operator=terminal_op_2)
+
+        root.add_child(child=terminal_node_0, position=0)
+        root.add_child(child=basis_node, position=1)
+
+        basis_node.add_child(child=terminal_node_1, position=0)
+        basis_node.add_child(child=terminal_node_2, position=1)
+
+        pickled_root = pickle.dumps(root)
+        unpickled_root = pickle.loads(pickled_root)
+
+        self.assertEqual(root, unpickled_root)
 
 
 class TestTree(unittest.TestCase):
@@ -1714,6 +1751,49 @@ class TestTree(unittest.TestCase):
 
         self.assertNotEqual(tree_1, tree_2)
         self.assertNotEqual(tree_2, tree_1)
+
+    def test_tree_pickle(self):
+        """Test that a Tree instance can be pickled and unpickled using the
+        default protocol.
+
+        """
+        some_type = Type(name='SomeType')
+        signature = (some_type, some_type)
+        dtype = some_type
+
+        basis_op_0 = Operator(
+            symbol=Symbol('func_0', dtype=dtype), signature=signature
+        )
+        basis_op_1 = Operator(
+            symbol=Symbol('func_1', dtype=dtype), signature=signature
+        )
+        terminal_op_0 = Operator(symbol=Symbol(name='term_0', dtype=dtype))
+        terminal_op_1 = Operator(symbol=Symbol(name='term_1', dtype=dtype))
+        terminal_op_2 = Operator(symbol=Symbol(name='term_2', dtype=dtype))
+
+        root = Node(operator=basis_op_0)
+        basis_node = Node(operator=basis_op_1)
+        terminal_node_0 = Node(operator=terminal_op_0)
+        terminal_node_1 = Node(operator=terminal_op_1)
+        terminal_node_2 = Node(operator=terminal_op_2)
+
+        root.add_child(child=terminal_node_0, position=0)
+        root.add_child(child=basis_node, position=1)
+
+        basis_node.add_child(child=terminal_node_1, position=0)
+        basis_node.add_child(child=terminal_node_2, position=1)
+
+        tree = Tree(root=root)
+
+        bfs_nodes = tuple(n for n in tree.bfs_iter())
+
+        pickled_tree = pickle.dumps(tree)
+        unpickled_tree = pickle.loads(pickled_tree)
+
+        unpickled_bfs_nodes = tuple(n for n in unpickled_tree.bfs_iter())
+
+        self.assertEqual(tree, unpickled_tree)
+        self.assertTupleEqual(bfs_nodes, unpickled_bfs_nodes)
 
     def test_calls_iter(self):
         """Test that a calls_iter formed over the following tree emits the

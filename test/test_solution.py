@@ -2,12 +2,13 @@ import unittest
 import time
 import mock
 import logging
+import pickle
 
 from concurrent.futures import ThreadPoolExecutor
 from zoonomia.tree import Node, Tree
 from zoonomia.solution import Objective, Fitness, Solution
 from zoonomia.types import Type
-from zoonomia.lang import Symbol, Call, Operator, OperatorSet
+from zoonomia.lang import Symbol, Call, Operator, OperatorTable
 
 logging.basicConfig()  # FIXME: wat
 log = logging.getLogger(__name__)
@@ -20,6 +21,10 @@ def futures_map(fn, iterable):
     return POOL.map(fn, iterable)
 
 
+def eval_func(s):
+    return 66.6
+
+
 class TestObjective(unittest.TestCase):
 
     def test_objective_hash(self):
@@ -27,8 +32,6 @@ class TestObjective(unittest.TestCase):
         the same data have equal hashes.
 
         """
-        def eval_func(solution): return 66.6
-
         weight = 42.0
 
         objective_1 = Objective(eval_func=eval_func, weight=weight)
@@ -43,8 +46,6 @@ class TestObjective(unittest.TestCase):
         the same data are equal.
 
         """
-        def eval_func(solution): return 66.6
-
         weight = 42.0
 
         objective_1 = Objective(eval_func=eval_func, weight=weight)
@@ -58,8 +59,6 @@ class TestObjective(unittest.TestCase):
         unequal.
 
         """
-        def eval_func(solution): return 66.6
-
         weight_1 = 42.0
         weight_2 = 43.0
 
@@ -69,15 +68,26 @@ class TestObjective(unittest.TestCase):
         self.assertNotEqual(objective_1, objective_2)
         self.assertNotEqual(objective_2, objective_1)
 
-    def test_evaluate(self):
+    def test_objective_pickle(self):
+        """Test that an Objective instance can be pickled and unpickled using
+        the default protocol.
+
+        """
+        weight = 42.0
+        objective = Objective(eval_func=eval_func, weight=weight)
+
+        pickled_objective = pickle.dumps(objective)
+        unpickled_objective = pickle.loads(pickled_objective)
+
+        self.assertEqual(objective, unpickled_objective)
+
+    def test_objective_evaluate(self):
         """Test that calling an Objective's *evaluate* method produces a
         Fitness object whose *score* attribute is equal to the *weight*
         parameter multiplied by the result of calling the *eval_func*.
 
         """
         int_type = Type(name='int')
-
-        def eval_func(solution): return 66.6
 
         weight = 42.0
 
@@ -99,8 +109,6 @@ class TestFitness(unittest.TestCase):
 
         """
         int_type = Type(name='int')
-
-        def eval_func(solution): return 66.6
 
         weight = 42.0
 
@@ -124,8 +132,6 @@ class TestFitness(unittest.TestCase):
         """
         int_type = Type(name='int')
 
-        def eval_func(solution): return 66.6
-
         weight = 42.0
 
         objective = Objective(eval_func=eval_func, weight=weight)
@@ -147,8 +153,6 @@ class TestFitness(unittest.TestCase):
 
         """
         int_type = Type(name='int')
-
-        def eval_func(solution): return 66.6
 
         weight = 42.0
 
@@ -173,8 +177,6 @@ class TestFitness(unittest.TestCase):
         """
         int_type = Type(name='int')
 
-        def eval_func(solution): return 66.6
-
         weight = 42.0
 
         objective = Objective(eval_func=eval_func, weight=weight)
@@ -192,13 +194,25 @@ class TestFitness(unittest.TestCase):
         self.assertNotEqual(fitness_1, fitness_2)
         self.assertNotEqual(fitness_2, fitness_1)
 
+    def test_fitness_pickle(self):
+        """Test that a Fitness instance can be pickled and unpickled using the
+        default protocol.
+
+        """
+        weight = 42.0
+        objective = Objective(eval_func=eval_func, weight=weight)
+        fitness = Fitness(score=66.6, objective=objective)
+
+        pickled_fitness = pickle.dumps(fitness)
+        unpickled_fitness = pickle.loads(pickled_fitness)
+
+        self.assertEqual(fitness, unpickled_fitness)
+
     def test_fitness_gt(self):
         """Test that fitness_1 with score_1 > score_2 is greater than fitness_2
         with score_2.
 
         """
-        def eval_func(solution): return 0.0  # only used for constructing objective
-
         objective = Objective(eval_func=eval_func, weight=42.0)
 
         fitness_1 = Fitness(score=66.7, objective=objective)
@@ -212,8 +226,6 @@ class TestFitness(unittest.TestCase):
         to fitness_3 with score_3 == score_1.
 
         """
-        def eval_func(solution): return 0.0  # only used for constructing objective
-
         objective = Objective(eval_func=eval_func, weight=42.0)
 
         fitness_1 = Fitness(score=66.7, objective=objective)
@@ -231,8 +243,6 @@ class TestFitness(unittest.TestCase):
         with score_2.
 
         """
-        def eval_func(solution): return 0.0  # only used for constructing objective
-
         objective = Objective(eval_func=eval_func, weight=42.0)
 
         fitness_1 = Fitness(score=66.6, objective=objective)
@@ -246,8 +256,6 @@ class TestFitness(unittest.TestCase):
         fitness_3 with score_3 == score_1.
 
         """
-        def eval_func(solution): return 0.0  # only used for constructing objective
-
         objective = Objective(eval_func=eval_func, weight=42.0)
 
         fitness_1 = Fitness(score=66.6, objective=objective)
@@ -269,8 +277,6 @@ class TestSolution(unittest.TestCase):
 
         """
         int_type = Type(name='int')
-
-        def eval_func(solution): return 66.6
 
         objective = Objective(eval_func=eval_func, weight=42.0)
 
@@ -339,9 +345,9 @@ class TestSolution(unittest.TestCase):
         """
         int_type = Type(name='int')
 
-        eval_func = mock.Mock(return_value=66.6)
+        mock_eval_func = mock.Mock(return_value=66.6)
 
-        objective = Objective(eval_func=eval_func, weight=42.0)
+        objective = Objective(eval_func=mock_eval_func, weight=42.0)
 
         terminal_operator = Operator(
             symbol=Symbol(name='term', dtype=int_type)
@@ -369,7 +375,7 @@ class TestSolution(unittest.TestCase):
                 self.assertEqual(result, previous_result)
             previous_result = result
 
-        eval_func.assert_called_once_with(solution)
+        mock_eval_func.assert_called_once_with(solution)
 
     def test_solution_dominates(self):
         """Test that a Solution's *dominates* method returns True if the
@@ -378,13 +384,13 @@ class TestSolution(unittest.TestCase):
         """
         int_type = Type(name='int')
 
-        eval_func_1 = mock.Mock(side_effect=[66.7, 66.6, 66.6])
-        eval_func_2 = mock.Mock(side_effect=[66.6, 66.6, 66.6])
-        eval_func_3 = mock.Mock(side_effect=[66.6, 66.6, 66.6])
+        mock_eval_func_1 = mock.Mock(side_effect=[66.7, 66.6, 66.6])
+        mock_eval_func_2 = mock.Mock(side_effect=[66.6, 66.6, 66.6])
+        mock_eval_func_3 = mock.Mock(side_effect=[66.6, 66.6, 66.6])
 
-        objective_1 = Objective(eval_func=eval_func_1, weight=42.0)
-        objective_2 = Objective(eval_func=eval_func_2, weight=42.0)
-        objective_3 = Objective(eval_func=eval_func_3, weight=42.0)
+        objective_1 = Objective(eval_func=mock_eval_func_1, weight=42.0)
+        objective_2 = Objective(eval_func=mock_eval_func_2, weight=42.0)
+        objective_3 = Objective(eval_func=mock_eval_func_3, weight=42.0)
 
         terminal_operator = Operator(
             symbol=Symbol(name='term', dtype=int_type)
@@ -416,20 +422,20 @@ class TestSolution(unittest.TestCase):
             TypeError, solution_1.dominates, solution_3
         )
 
-        eval_func_1.assert_has_calls(
+        mock_eval_func_1.assert_has_calls(
             calls=(mock.call(solution_1), mock.call(solution_2))
         )
-        self.assertEqual(eval_func_1.call_count, 3)
+        self.assertEqual(mock_eval_func_1.call_count, 3)
 
-        eval_func_2.assert_has_calls(
+        mock_eval_func_2.assert_has_calls(
             calls=(mock.call(solution_1), mock.call(solution_2))
         )
-        self.assertEqual(eval_func_2.call_count, 3)
+        self.assertEqual(mock_eval_func_2.call_count, 3)
 
-        eval_func_3.assert_has_calls(
+        mock_eval_func_3.assert_has_calls(
             calls=(mock.call(solution_1), mock.call(solution_2))
         )
-        self.assertEqual(eval_func_3.call_count, 3)
+        self.assertEqual(mock_eval_func_3.call_count, 3)
 
     def test_solution_hash(self):
         """Test that two identically-distinct Solution instances which refer to
@@ -438,9 +444,9 @@ class TestSolution(unittest.TestCase):
         """
         int_type = Type(name='int')
 
-        eval_func = mock.Mock(return_value=66.6)
+        mock_eval_func = mock.Mock(return_value=66.6)
 
-        objective = Objective(eval_func=eval_func, weight=42.0)
+        objective = Objective(eval_func=mock_eval_func, weight=42.0)
 
         terminal_operator = Operator(
             symbol=Symbol(name='term', dtype=int_type)
@@ -466,11 +472,11 @@ class TestSolution(unittest.TestCase):
         for _ in xrange(100):
             self.assertEqual(hash(solution_1), hash(solution_2))
 
-        eval_func.assert_has_calls(
+        mock_eval_func.assert_has_calls(
                 calls=(mock.call(solution_1), mock.call(solution_2))
         )
 
-        self.assertEqual(eval_func.call_count, 2)
+        self.assertEqual(mock_eval_func.call_count, 2)
 
     def test_solution_len(self):
         """Test that a solution
@@ -478,9 +484,9 @@ class TestSolution(unittest.TestCase):
         """
         int_type = Type(name='int')
 
-        eval_func = mock.Mock(return_value=66.6)
+        mock_eval_func = mock.Mock(return_value=66.6)
 
-        objective = Objective(eval_func=eval_func, weight=42.0)
+        objective = Objective(eval_func=mock_eval_func, weight=42.0)
 
         basis_operator = Operator(
             symbol=Symbol(name='basis', dtype=int_type), signature=(int_type,)
@@ -516,7 +522,7 @@ class TestSolution(unittest.TestCase):
             self.assertEqual(2, len(solution_1))
             self.assertEqual(len(solution_1), len(solution_2))
 
-        eval_func.assert_not_called()
+        mock_eval_func.assert_not_called()
 
     def test_solution_equals(self):
         """Test that two identically distinct Solutions are equal if their
@@ -525,9 +531,9 @@ class TestSolution(unittest.TestCase):
         """
         int_type = Type(name='int')
 
-        eval_func = mock.Mock(return_value=66.6)
+        mock_eval_func = mock.Mock(return_value=66.6)
 
-        objective = Objective(eval_func=eval_func, weight=42.0)
+        objective = Objective(eval_func=mock_eval_func, weight=42.0)
 
         terminal_operator = Operator(
             symbol=Symbol(name='term', dtype=int_type)
@@ -554,11 +560,11 @@ class TestSolution(unittest.TestCase):
             self.assertEqual(solution_1, solution_2)
             self.assertEqual(solution_2, solution_1)
 
-        eval_func.assert_has_calls(
+        mock_eval_func.assert_has_calls(
                 calls=(mock.call(solution_1), mock.call(solution_2))
         )
 
-        self.assertEqual(eval_func.call_count, 2)
+        self.assertEqual(mock_eval_func.call_count, 2)
 
     def test_solution_not_equals(self):
         """Test that two solutions are not equal if their hashes are not equal.
@@ -566,9 +572,9 @@ class TestSolution(unittest.TestCase):
         """
         int_type = Type(name='int')
 
-        eval_func = mock.Mock(side_effect=[66.6, 66.7])
+        mock_eval_func = mock.Mock(side_effect=[66.6, 66.7])
 
-        objective = Objective(eval_func=eval_func, weight=42.0)
+        objective = Objective(eval_func=mock_eval_func, weight=42.0)
 
         terminal_operator = Operator(
             symbol=Symbol(name='term', dtype=int_type)
@@ -595,11 +601,38 @@ class TestSolution(unittest.TestCase):
             self.assertNotEqual(solution_1, solution_2)
             self.assertNotEqual(solution_2, solution_1)
 
-        eval_func.assert_has_calls(
+        mock_eval_func.assert_has_calls(
             calls=(mock.call(solution_1), mock.call(solution_2))
         )
 
-        self.assertEqual(eval_func.call_count, 2)
+        self.assertEqual(mock_eval_func.call_count, 2)
+
+    def test_solution_pickle(self):
+        """Test that a Solution instance can be pickled and unpickled using the
+        default protocol.
+
+        """
+        int_type = Type(name='int')
+
+        objective = Objective(eval_func=eval_func, weight=42.0)
+
+        terminal_operator = Operator(
+            symbol=Symbol(name='term', dtype=int_type)
+        )
+
+        root = Node(operator=terminal_operator)
+        tree = Tree(root=root)
+
+        solution = Solution(
+            tree=tree,
+            objectives=(objective,),
+            map_=futures_map
+        )
+
+        pickled_solution = pickle.dumps(solution)
+        unpickled_solution = pickle.loads(pickled_solution)
+
+        self.assertEqual(solution, unpickled_solution)
 
     def test_solution_gt(self):
         """Test that a Solution which dominates another solution and has equal
@@ -608,11 +641,11 @@ class TestSolution(unittest.TestCase):
         """
         int_type = Type(name='int')
 
-        eval_func_1 = mock.Mock(side_effect=[66.7, 66.6, 66.6])
-        eval_func_2 = mock.Mock(side_effect=[66.6, 66.6, 66.6])
+        mock_eval_func_1 = mock.Mock(side_effect=[66.7, 66.6, 66.6])
+        mock_eval_func_2 = mock.Mock(side_effect=[66.6, 66.6, 66.6])
 
-        objective_1 = Objective(eval_func=eval_func_1, weight=42.0)
-        objective_2 = Objective(eval_func=eval_func_2, weight=42.0)
+        objective_1 = Objective(eval_func=mock_eval_func_1, weight=42.0)
+        objective_2 = Objective(eval_func=mock_eval_func_2, weight=42.0)
 
         terminal_operator_1 = Operator(
             symbol=Symbol(name='term1', dtype=int_type)
@@ -654,23 +687,23 @@ class TestSolution(unittest.TestCase):
                 solution_3
             )
 
-        eval_func_1.assert_has_calls(
+        mock_eval_func_1.assert_has_calls(
             calls=(
                 mock.call(solution_1),
                 mock.call(solution_2),
                 mock.call(solution_3)
             )
         )
-        self.assertEqual(eval_func_1.call_count, 3)
+        self.assertEqual(mock_eval_func_1.call_count, 3)
 
-        eval_func_2.assert_has_calls(
+        mock_eval_func_2.assert_has_calls(
             calls=(
                 mock.call(solution_1),
                 mock.call(solution_2),
                 mock.call(solution_3)
             )
         )
-        self.assertEqual(eval_func_2.call_count, 3)
+        self.assertEqual(mock_eval_func_2.call_count, 3)
 
     def test_solution_lt(self):
         """Test that a solution which is dominated by another solution and has
@@ -679,11 +712,11 @@ class TestSolution(unittest.TestCase):
         """
         int_type = Type(name='int')
 
-        eval_func_1 = mock.Mock(side_effect=[66.6, 66.7, 66.7])
-        eval_func_2 = mock.Mock(side_effect=[66.6, 66.6, 66.6])
+        mock_eval_func_1 = mock.Mock(side_effect=[66.6, 66.7, 66.7])
+        mock_eval_func_2 = mock.Mock(side_effect=[66.6, 66.6, 66.6])
 
-        objective_1 = Objective(eval_func=eval_func_1, weight=42.0)
-        objective_2 = Objective(eval_func=eval_func_2, weight=42.0)
+        objective_1 = Objective(eval_func=mock_eval_func_1, weight=42.0)
+        objective_2 = Objective(eval_func=mock_eval_func_2, weight=42.0)
 
         terminal_operator_1 = Operator(
             symbol=Symbol(name='term1', dtype=int_type)
@@ -725,23 +758,23 @@ class TestSolution(unittest.TestCase):
                 solution_3
             )
 
-        eval_func_1.assert_has_calls(
+        mock_eval_func_1.assert_has_calls(
             calls=(
                 mock.call(solution_1),
                 mock.call(solution_2),
                 mock.call(solution_3)
             )
         )
-        self.assertEqual(eval_func_1.call_count, 3)
+        self.assertEqual(mock_eval_func_1.call_count, 3)
 
-        eval_func_2.assert_has_calls(
+        mock_eval_func_2.assert_has_calls(
             calls=(
                 mock.call(solution_1),
                 mock.call(solution_2),
                 mock.call(solution_3)
             )
         )
-        self.assertEqual(eval_func_2.call_count, 3)
+        self.assertEqual(mock_eval_func_2.call_count, 3)
 
     def test_solutions_sorted(self):
         """Test that a collection of solution instances behave nicely under the
@@ -752,11 +785,11 @@ class TestSolution(unittest.TestCase):
 
         self.maxDiff = None
 
-        eval_func_1 = mock.Mock(side_effect=[66.6, 66.7, 66.7, 66.8])
-        eval_func_2 = mock.Mock(side_effect=[66.6, 66.6, 66.6, 66.6])
+        mock_eval_func_1 = mock.Mock(side_effect=[66.6, 66.7, 66.7, 66.8])
+        mock_eval_func_2 = mock.Mock(side_effect=[66.6, 66.6, 66.6, 66.6])
 
-        objective_1 = Objective(eval_func=eval_func_1, weight=42.0)
-        objective_2 = Objective(eval_func=eval_func_2, weight=42.0)
+        objective_1 = Objective(eval_func=mock_eval_func_1, weight=42.0)
+        objective_2 = Objective(eval_func=mock_eval_func_2, weight=42.0)
 
         terminal_operator = Operator(
             symbol=Symbol(name='term', dtype=int_type)
@@ -801,7 +834,7 @@ class TestSolution(unittest.TestCase):
             self.assertIs(solution, expected[idx])
             log.info('verified solution %d', idx)
 
-        eval_func_1.assert_has_calls(
+        mock_eval_func_1.assert_has_calls(
             calls=(
                 mock.call(solution_1),
                 mock.call(solution_2),
@@ -809,9 +842,9 @@ class TestSolution(unittest.TestCase):
                 mock.call(solution_4)
             )
         )
-        self.assertEqual(eval_func_1.call_count, 4)
+        self.assertEqual(mock_eval_func_1.call_count, 4)
 
-        eval_func_2.assert_has_calls(
+        mock_eval_func_2.assert_has_calls(
             calls=(
                 mock.call(solution_1),
                 mock.call(solution_2),
@@ -819,4 +852,4 @@ class TestSolution(unittest.TestCase):
                 mock.call(solution_4)
             )
         )
-        self.assertEqual(eval_func_2.call_count, 4)
+        self.assertEqual(mock_eval_func_2.call_count, 4)

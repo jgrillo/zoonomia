@@ -2,7 +2,9 @@ from zoonomia.tree import Node, Tree
 from zoonomia.solution import Solution
 
 
-def full(max_depth, basis_set, terminal_set, dtype, objectives, rng):
+def full(
+    max_depth, basis_operators, terminal_operators, dtype, objectives, rng
+):
     """An implementation of Koza's *full* tree generation strategy augmented to
     take type information into account. Returns a candidate solution satisfying
     the property that all branches of the solution's tree representation have
@@ -14,19 +16,19 @@ def full(max_depth, basis_set, terminal_set, dtype, objectives, rng):
 
     :type max_depth: int
 
-    :param basis_set:
-        The OperatorSet of basis operators which, together with *terminal_set*,
-        satisfy the closure property.
-
-    :type basis_set:
-        zoonomia.solution.OperatorSet[zoonomia.solution.Operator]
-
-    :param terminal_set:
-        The OperatorSet of terminal operators which, together with
+    :param basis_operators:
+        The OperatorTable of basis operators which, together with
         *terminal_set*, satisfy the closure property.
 
-    :type terminal_set:
-        zoonomia.solution.OperatorSet[zoonomia.solution.Operator]
+    :type basis_operators:
+        zoonomia.solution.OperatorTable[zoonomia.solution.Operator]
+
+    :param terminal_operators:
+        The OperatorTable of terminal operators which, together with
+        *terminal_set*, satisfy the closure property.
+
+    :type terminal_operators:
+        zoonomia.solution.OperatorTable[zoonomia.solution.Operator]
 
     :param dtype:
         The return type of the resulting solution's functional representation.
@@ -49,9 +51,9 @@ def full(max_depth, basis_set, terminal_set, dtype, objectives, rng):
 
     """
     if max_depth <= 1:
-        node = Node(operator=rng.choice(terminal_set[dtype]))
+        node = Node(operator=rng.choice(terminal_operators[dtype]))
     else:
-        node = Node(operator=rng.choice(basis_set[dtype]))
+        node = Node(operator=rng.choice(basis_operators[dtype]))
 
     root = node
     depth = 1
@@ -64,9 +66,9 @@ def full(max_depth, basis_set, terminal_set, dtype, objectives, rng):
         for parent in parents:
             for idx, t in enumerate(parent.operator.signature):
                 node = Node(
-                    operator=rng.choice(terminal_set[t])
+                    operator=rng.choice(terminal_operators[t])
                 ) if depth == max_depth else Node(
-                    operator=rng.choice(basis_set[t])
+                    operator=rng.choice(basis_operators[t])
                 )
 
                 children.append(node)
@@ -80,7 +82,9 @@ def full(max_depth, basis_set, terminal_set, dtype, objectives, rng):
     return Solution(tree=tree, objectives=objectives)
 
 
-def grow(max_depth, basis_set, terminal_set, dtype, objectives, rng):
+def grow(
+    max_depth, basis_operators, terminal_operators, dtype, objectives, rng
+):
     """An implementation of Koza's *grow* tree generation strategy augmented to
     take type information into account. Returns a candidate solution whose
     graph representation has maximum path length from root to leaf constrained
@@ -90,19 +94,19 @@ def grow(max_depth, basis_set, terminal_set, dtype, objectives, rng):
 
     :type max_depth: int
 
-    :param basis_set:
-        The OperatorSet of basis operators which, together with *terminal_set*,
-        satisfy the closure property.
+    :param basis_operators:
+        The OperatorTable of basis operators which, together with
+        *terminal_operators*, satisfy the closure property.
 
-    :type basis_set:
-        zoonomia.solution.OperatorSet[zoonomia.solution.Operator]
+    :type basis_operators:
+        zoonomia.solution.OperatorTable[zoonomia.solution.Operator]
 
-    :param terminal_set:
-        The OperatorSet of terminal operators which, together with
+    :param terminal_operators:
+        The OperatorTable of terminal operators which, together with
         *basis_set*, satisfy the closure property.
 
-    :type terminal_set:
-        zoonomia.solution.OperatorSet[zoonomia.solution.Operator]
+    :type terminal_operators:
+        zoonomia.solution.OperatorTable[zoonomia.solution.Operator]
 
     :param dtype:
         The return type of the resulting solution's functional representation.
@@ -124,9 +128,9 @@ def grow(max_depth, basis_set, terminal_set, dtype, objectives, rng):
 
     """
     if max_depth <= 1:
-        node = Node(operator=rng.choice(terminal_set[dtype]))
+        node = Node(operator=rng.choice(terminal_operators[dtype]))
     else:
-        operator = rng.choice(basis_set.union(terminal_set)[dtype])
+        operator = rng.choice(basis_operators.union(terminal_operators)[dtype])
         node = Node(operator=operator)
 
     root = node
@@ -140,9 +144,11 @@ def grow(max_depth, basis_set, terminal_set, dtype, objectives, rng):
         for parent in parents:
             for idx, t in enumerate(parent.operator.signature):
                 if depth == max_depth:
-                    node = Node(operator=rng.choice(terminal_set[t]))
+                    node = Node(operator=rng.choice(terminal_operators[t]))
                 else:
-                    operator = rng.choice(basis_set.union(terminal_set)[t])
+                    operator = rng.choice(
+                        basis_operators.union(terminal_operators)[t]
+                    )
                     node = Node(operator=operator)
                     if node.left is not None:  # node contains a basis operator
                         children.append(node)
@@ -157,7 +163,8 @@ def grow(max_depth, basis_set, terminal_set, dtype, objectives, rng):
 
 
 def ramped_half_and_half(
-    max_depth, population_size, basis_set, terminal_set, dtype, objectives, rng
+    max_depth, population_size, basis_operators, terminal_operators, dtype,
+    objectives, rng
 ):
     """An implementation of something like Koza's ramped half-and-half
     population initialization procedure. See Koza1992.
@@ -170,19 +177,19 @@ def ramped_half_and_half(
 
     :type population_size: int
 
-    :param basis_set:
-        The OperatorSet of basis operators which, together with *terminal_set*,
-        satisfy the closure property.
+    :param basis_operators:
+        The OperatorTable of basis operators which, together with
+        *terminal_operators*, satisfy the closure property.
 
-    :type basis_set:
-        zoonomia.solution.OperatorSet[zoonomia.solution.Operator]
+    :type basis_operators:
+        zoonomia.solution.OperatorTable[zoonomia.solution.Operator]
 
-    :param terminal_set:
-        The OperatorSet of terminal operators which, together with
+    :param terminal_operators:
+        The OperatorTable of terminal operators which, together with
         *basis_set*, satisfy the closure property.
 
-    :type terminal_set:
-        zoonomia.solution.OperatorSet[zoonomia.solution.Operator]
+    :type terminal_operators:
+        zoonomia.solution.OperatorTable[zoonomia.solution.Operator]
 
     :param dtype:
         The return type of the resulting solutions' functional representations.
@@ -210,8 +217,8 @@ def ramped_half_and_half(
     return frozenset(
         _ramped_half_and_half_generator(
             counts=counts,
-            basis_set=basis_set,
-            terminal_set=terminal_set,
+            basis_operators=basis_operators,
+            terminal_operators=terminal_operators,
             objectives=objectives,
             dtype=dtype,
             rng=rng
@@ -304,15 +311,15 @@ def tournament_select(solution_1, solution_2, rng):  # TODO: clean up docs
 
 
 def _ramped_half_and_half_generator(
-    counts, basis_set, terminal_set, objectives, dtype, rng
+    counts, basis_operators, terminal_operators, objectives, dtype, rng
 ):
     for depth, count in counts.items():
         for _ in xrange(count):
             if rng.getrandbits(1):
                 yield full(
                     max_depth=depth,
-                    basis_set=basis_set,
-                    terminal_set=terminal_set,
+                    basis_operators=basis_operators,
+                    terminal_operators=terminal_operators,
                     dtype=dtype,
                     objectives=objectives,
                     rng=rng
@@ -320,8 +327,8 @@ def _ramped_half_and_half_generator(
             else:
                 yield grow(
                     max_depth=depth,
-                    basis_set=basis_set,
-                    terminal_set=terminal_set,
+                    basis_operators=basis_operators,
+                    terminal_operators=terminal_operators,
                     dtype=dtype,
                     objectives=objectives,
                     rng=rng
