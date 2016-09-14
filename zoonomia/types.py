@@ -105,10 +105,10 @@ class Type(object):
         return self._hash
 
     def __eq__(self, other):
-        return hash(self) == hash(other)
+        return self.name == other.name and self.meta == other.meta
 
     def __ne__(self, other):
-        return hash(self) != hash(other)
+        return not self.__eq__(other)
 
     def __contains__(self, candidate):
         """Check whether this type can be resolved to the candidate type. This
@@ -205,10 +205,15 @@ class ParametrizedType(object):
         return self._hash
 
     def __eq__(self, other):
-        return hash(self) == hash(other)
+        return (
+            self.name == other.name and
+            self.base_type == other.base_type and
+            self.parameter_types == other.parameter_types and
+            self.meta == other.meta
+        )
 
     def __ne__(self, other):
-        return hash(self) != hash(other)
+        return not self.__eq__(other)
 
     def __contains__(self, candidate):
         """Check whether this type can be resolved to a type *candidate*.
@@ -309,10 +314,14 @@ class GenericType(object):
         return self._hash
 
     def __eq__(self, other):
-        return hash(self) == hash(other)
+        return (
+            self.name == other.name and
+            self.contained_types == other.contained_types and
+            self.meta == other.meta
+        )
 
     def __ne__(self, other):
-        return hash(self) != hash(other)
+        return not self.__eq__(other)
 
     def __contains__(self, candidate):
         """Check whether this type can be resolved to a type *candidate*.

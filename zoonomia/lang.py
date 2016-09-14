@@ -42,10 +42,10 @@ class Symbol(object):
         return self._hash
 
     def __eq__(self, other):
-        return hash(self) == hash(other)
+        return self.name == other.name and self.dtype == other.dtype
 
     def __ne__(self, other):
-        return hash(self) != hash(other)
+        return not self.__eq__(other)
 
     def __repr__(self):
         return 'Symbol(name={symbol}, dtype={dtype})'.format(
@@ -55,7 +55,7 @@ class Symbol(object):
 
 class Call(object):
 
-    __slots__ = ('target', 'symbol', 'args', 'dtype', '_operator', '_hash')
+    __slots__ = ('target', 'symbol', 'args', 'dtype', 'operator', '_hash')
 
     def __new__(cls, target, operator, args):
         """A Call instance represents a function call in an alien execution
@@ -86,44 +86,50 @@ class Call(object):
         obj.target = target
         obj.dtype = operator.dtype
         obj.symbol = operator.symbol
-        obj._operator = operator
+        obj.operator = operator
         obj.args = args
         obj._hash = hash(
-            (obj.target, obj.dtype, obj.symbol, obj._operator, obj.args)
+            (obj.target, obj.dtype, obj.symbol, obj.operator, obj.args)
         )
         return obj
 
     def __getstate__(self):
         return (
-            self.target, self.symbol, self.args, self.dtype, self._operator,
+            self.target, self.symbol, self.args, self.dtype, self.operator,
             self._hash
         )
 
     def __setstate__(self, state):
-        target, symbol, args, dtype, _operator, _hash = state
+        target, symbol, args, dtype, operator, _hash = state
 
         self.target = target
         self.symbol = symbol
         self.args = args
         self.dtype = dtype
-        self._operator = _operator
+        self.operator = operator
         self._hash = _hash
 
     def __hash__(self):
         return self._hash
 
     def __eq__(self, other):
-        return hash(self) == hash(other)
+        return (
+            self.target == other.target and
+            self.symbol == other.symbol and
+            self.args == other.args and
+            self.dtype == other.dtype and
+            self.operator == other.operator
+        )
 
     def __ne__(self, other):
-        return hash(self) != hash(other)
+        return not self.__eq__(other)
 
     def __repr__(self):
         return (
             'Call(target={target}, operator={operator}, args={args})'
         ).format(
             target=repr(self.target),
-            operator=repr(self._operator),
+            operator=repr(self.operator),
             args=repr(self.args)
         )
 
@@ -174,10 +180,14 @@ class Operator(object):
         return self._hash
 
     def __eq__(self, other):
-        return hash(self) == hash(other)
+        return (
+            self.symbol == other.symbol and
+            self.signature == other.signature and
+            self.dtype == other.dtype
+        )
 
     def __ne__(self, other):
-        return hash(self) != hash(other)
+        return not self.__eq__(other)
 
     def __repr__(self):
         return (
@@ -244,7 +254,7 @@ class OperatorTable(object):
         obj.operators = frozenset(operators)
         obj._lock = Lock()
         obj._dtype_to_operators = dict()
-        obj._hash = hash(obj.operators)
+        obj._hash = hash(('OperatorTable', obj.operators))
 
         for operator in obj.operators:
             obj._dtype_to_operators[operator.dtype] = frozenset(
@@ -268,10 +278,10 @@ class OperatorTable(object):
         return self._hash
 
     def __eq__(self, other):
-        return hash(self) == hash(other)
+        return self.operators == other.operators
 
     def __ne__(self, other):
-        return hash(self) != hash(other)
+        return not self.__eq__(other)
 
     def union(self, other):
         """Returns an OperatorSet containing those elements which are members

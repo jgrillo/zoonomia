@@ -8,7 +8,7 @@ log = logging.getLogger(__name__)  # FIXME
 
 class Objective(object):
 
-    __slots__ = ('_eval_func', '_weight', '_hash')
+    __slots__ = ('eval_func', 'weight', '_hash')
 
     def __new__(cls, eval_func, weight):
         """An Objective contains a reference to a function for evaluating a
@@ -29,34 +29,36 @@ class Objective(object):
 
         """
         obj = super(Objective, cls).__new__(cls)
-        obj._eval_func = eval_func
-        obj._weight = weight
-        obj._hash = hash((obj._eval_func, obj._weight))
+        obj.eval_func = eval_func
+        obj.weight = weight
+        obj._hash = hash((obj.eval_func, obj.weight))
         return obj
 
     def __getstate__(self):
-        return (self._eval_func, self._weight, self._hash)
+        return self.eval_func, self.weight, self._hash
 
     def __setstate__(self, state):
         _eval_func, _weight, _hash = state
 
-        self._eval_func = _eval_func
-        self._weight = _weight
+        self.eval_func = _eval_func
+        self.weight = _weight
         self._hash = _hash
 
     def __repr__(self):
         return 'Objective(eval_func={eval_func}, weight={weight})'.format(
-            eval_func=repr(self._eval_func), weight=repr(self._weight)
+            eval_func=repr(self.eval_func), weight=repr(self.weight)
         )
 
     def __hash__(self):
         return self._hash
 
     def __eq__(self, other):
-        return hash(self) == hash(other)
+        return (
+            self.eval_func == other.eval_func and self.weight == other.weight
+        )
 
     def __ne__(self, other):
-        return hash(self) != hash(other)
+        return not self.__eq__(other)
 
     def evaluate(self, solution):
         """Compute the fitness measurement of a solution with respect to this
@@ -73,7 +75,7 @@ class Objective(object):
         :rtype: zoonomia.solution.Fitness
 
         """
-        score = self._eval_func(solution) * self._weight
+        score = self.eval_func(solution) * self.weight
         return Fitness(score=score, objective=self)
 
 
@@ -100,7 +102,7 @@ class Fitness(object):
         return obj
 
     def __getstate__(self):
-        return (self.score, self.objective, self._hash)
+        return self.score, self.objective, self._hash
 
     def __setstate__(self, state):
         score, objective, _hash = state
@@ -118,10 +120,10 @@ class Fitness(object):
         return self._hash
 
     def __eq__(self, other):
-        return hash(self) == hash(other)
+        return self.score == other.score and self.objective == other.objective
 
     def __ne__(self, other):
-        return hash(self) != hash(other)
+        return not self.__eq__(other)
 
     def __gt__(self, other):
         return (
@@ -144,7 +146,7 @@ class Fitness(object):
         )
 
 
-class Solution(object):
+class Solution(object):  # FIXME: should fitnesses be futures?
     """The Solution type provides an abstraction over a candidate solution's
     tree representation, the objectives against which the candidate will be
     measured, and the results of evaluating the candidate solution against its
@@ -152,7 +154,7 @@ class Solution(object):
 
     """
 
-    __slots__ = ('tree', 'map', 'objectives', '_fitnesses', '_hash', '_lock')
+    __slots__ = ('tree', 'map', 'objectives', 'fitnesses', '_hash', '_lock')
 
     def __new__(cls, tree, objectives, map_=map):
         """A Solution instance unites a Tree representation with a tuple of
@@ -185,23 +187,23 @@ class Solution(object):
         obj.tree = tree
         obj.objectives = objectives
         obj.map = map_
-        obj._fitnesses = None
+        obj.fitnesses = None
         obj._lock = RLock()
         obj._hash = None
         return obj
 
     def __getstate__(self):
         return (
-            self.tree, self.objectives, self.map, self._fitnesses, self._hash
+            self.tree, self.objectives, self.map, self.fitnesses, self._hash
         )
 
     def __setstate__(self, state):
-        tree, objectives, map_, _fitnesses, _hash = state
+        tree, objectives, map_, fitnesses, _hash = state
 
         self.tree = tree
         self.objectives = objectives
         self.map = map_
-        self._fitnesses = _fitnesses
+        self.fitnesses = fitnesses
         self._hash = _hash
         self._lock = RLock()
 
@@ -216,9 +218,9 @@ class Solution(object):
         :rtype: tuple[zoonomia.solution.Fitness]
 
         """
-        if self._fitnesses is None:
+        if self.fitnesses is None:
             with self._lock:
-                if self._fitnesses is None:
+                if self.fitnesses is None:
                     fitnesses = self.map(
                         lambda o: o.evaluate(self), self.objectives
                     )
@@ -230,12 +232,12 @@ class Solution(object):
                         idx = self.objectives.index(fitness.objective)
                         ordered_fitnesses[idx] = fitness
 
-                    self._fitnesses = tuple(ordered_fitnesses)
+                    self.fitnesses = tuple(ordered_fitnesses)
                     self._hash = hash(
-                        (self.tree, self._fitnesses, self.objectives)
+                        (self.tree, self.fitnesses, self.objectives)
                     )
         # TODO: asynchronize by making _fitnesses a generator?
-        return self._fitnesses
+        return self.fitnesses
 
     def dominates(self, other):
         """Predicate function to determine whether this solution dominates
@@ -298,31 +300,56 @@ class Solution(object):
                 if self._hash is None:
                     log.warn('Evaluation triggered by hash for %s', self)
                     self.evaluate()
+
         return self._hash
 
     def __eq__(self, other):
-        """Two solution instances are equal if their hashes are equal.
+        """Computes whether this solution equals another solution in a
+        thread-safe manner. If this instance's *evaluate* method or the other
+        instance's *evaluate* method has not been called prior to the first
+        call to *__eq__*, calling this method will trigger one or perhaps two
+        potentially expensive *evaluate* calls.
 
-        :param other: Another solution.
-        :type other: zoonomia.solution.Solution
+        :param other: The other solution.
 
-        :return: Whether this solution and *other* have equal hashes.
+        :type other: Solution
+
+        :return: Whether this solution equals the other solution.
+
         :rtype: bool
 
         """
-        return hash(self) == hash(other)
+        hash(other)  # potentially trigger evaluation of other
+
+        if self._hash is None:
+            with self._lock:
+                if self._hash is None:
+                    log.warn('Evaluation triggered by __eq__ for %s', self)
+                    self.evaluate()
+
+        return (
+            self.tree == other.tree and
+            self.fitnesses == other.fitnesses and
+            self.objectives == other.objectives
+        )
 
     def __ne__(self, other):
-        """Two solution instances are unequal if their hashes are unequal.
+        """Computes whether this solution doesn't equal another solution in a
+        thread-safe manner. If this instance's *evaluate* method or the other
+        instance's *evaluate* method has not been called prior to the first
+        call to *__eq__*, calling this method will trigger one or perhaps two
+        potentially expensive *evaluate* calls.
 
-        :param other: Another solution.
-        :type other: zoonomia.solution.Solution
+        :param other: The other solution.
 
-        :return: Whether this solution and *other* have unequal hashes.
+        :type other: Solution
+
+        :return: Whether this solution equals the other solution.
+
         :rtype: bool
 
         """
-        return hash(self) != hash(other)
+        return not self.__eq__(other)
 
     def __gt__(self, other):
         """This solution instance is greater than the *other* solution instance

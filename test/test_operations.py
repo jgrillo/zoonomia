@@ -349,7 +349,32 @@ class TestGrow(unittest.TestCase):
 
 class TestRampedHalfAndHalf(unittest.TestCase):
 
-    def test_ramped_half_and_half(self):
+    @mock.patch('random.Random')
+    def test_random_depth_counts(self, MockRandom):
+        """
+
+        """
+        raise NotImplementedError()  # FIXME
+
+    @mock.patch('random.Random')
+    def test_ramped_half_and_half_max_depth_1_same_as_full(self, MockRandom):
+        """
+
+        """
+        raise NotImplementedError()  # FIXME
+
+    @mock.patch('random.Random')
+    def test_ramped_half_and_half_max_depth_1_same_as_grow(self, MockRandom):
+        """
+
+        """
+        raise NotImplementedError()  # FIXME
+
+    @mock.patch('random.Random')
+    def test_ramped_half_and_half_max_depth_3(self, MockRandom):
+        """
+
+        """
         raise NotImplementedError()  # FIXME
 
 

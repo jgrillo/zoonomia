@@ -10,9 +10,9 @@ from zoonomia.solution import Objective, Fitness, Solution
 from zoonomia.types import Type
 from zoonomia.lang import Symbol, Call, Operator, OperatorTable
 
-logging.basicConfig()  # FIXME: wat
-log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
+logging.basicConfig()
+LOG = logging.getLogger(__name__)
+LOG.setLevel(logging.DEBUG)
 
 POOL = ThreadPoolExecutor(max_workers=100)
 
@@ -22,51 +22,102 @@ def futures_map(fn, iterable):
 
 
 def eval_func(s):
+    LOG.info('Evaluating solution:\t{0}'.format(repr(s)))
     return 66.6
 
 
 class TestObjective(unittest.TestCase):
 
-    def test_objective_hash(self):
-        """Test that two objectives which are identically distinct yet refer to
-        the same data have equal hashes.
-
-        """
+    def test_equals_reflexive(self):
+        """Test that an object equals itself."""
         weight = 42.0
 
         objective_1 = Objective(eval_func=eval_func, weight=weight)
-        objective_2 = Objective(eval_func=eval_func, weight=weight)
+        objective_2 = objective_1
 
-        self.assertIsNot(objective_1, objective_2)
+        self.assertIs(objective_1, objective_2)
+        self.assertEqual(objective_1, objective_2)
 
-        self.assertEqual(hash(objective_1), hash(objective_2))
-
-    def test_objective_equals(self):
-        """Test that two objectives which are identically distinct yet refer to
-        the same data are equal.
-
-        """
+    def test_equals_symmetric(self):
+        """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
         weight = 42.0
+        another_weight = 66.6
 
         objective_1 = Objective(eval_func=eval_func, weight=weight)
         objective_2 = Objective(eval_func=eval_func, weight=weight)
+        another_objective = Objective(
+            eval_func=eval_func, weight=another_weight
+        )
+
+        self.assertFalse(objective_1 is objective_2)
 
         self.assertEqual(objective_1, objective_2)
         self.assertEqual(objective_2, objective_1)
 
-    def test_objective_not_equals(self):
-        """Test that two objectives which do not refer to the same data are
-        unequal.
+        self.assertFalse(objective_1 is another_objective)
 
-        """
-        weight_1 = 42.0
-        weight_2 = 43.0
+        self.assertNotEqual(objective_1, another_objective)
+        self.assertNotEqual(another_objective, objective_1)
 
-        objective_1 = Objective(eval_func=eval_func, weight=weight_1)
-        objective_2 = Objective(eval_func=eval_func, weight=weight_2)
+    def test_equals_transitive(self):
+        """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
+        weight = 42.0
 
-        self.assertNotEqual(objective_1, objective_2)
-        self.assertNotEqual(objective_2, objective_1)
+        objective_1 = Objective(eval_func=eval_func, weight=weight)
+        objective_2 = Objective(eval_func=eval_func, weight=weight)
+        objective_3 = Objective(eval_func=eval_func, weight=weight)
+
+        self.assertFalse(objective_1 is objective_2)
+        self.assertFalse(objective_2 is objective_3)
+        self.assertFalse(objective_1 is objective_3)
+
+        self.assertEqual(objective_1, objective_2)
+        self.assertEqual(objective_2, objective_3)
+        self.assertEqual(objective_1, objective_3)
+
+    def test_equals_consistent(self):
+        """Test that repeated equals calls return the same value."""
+        weight = 42.0
+        another_weight = 66.6
+
+        objective_1 = Objective(eval_func=eval_func, weight=weight)
+        objective_2 = Objective(eval_func=eval_func, weight=weight)
+        another_objective = Objective(
+            eval_func=eval_func, weight=another_weight
+        )
+
+        self.assertFalse(objective_1 is objective_2)
+
+        self.assertEqual(objective_1, objective_2)
+        self.assertEqual(objective_1, objective_2)
+        self.assertEqual(objective_1, objective_2)
+
+        self.assertFalse(objective_1 is another_objective)
+
+        self.assertNotEqual(objective_1, another_objective)
+        self.assertNotEqual(objective_1, another_objective)
+        self.assertNotEqual(objective_1, another_objective)
+
+    def test_hash_consistent(self):
+        """Test that repeated hash calls yield the same value."""
+        weight = 42.0
+
+        objective_1 = Objective(eval_func=eval_func, weight=weight)
+        hash_1 = hash(objective_1)
+
+        self.assertEqual(hash_1, hash(objective_1))
+        self.assertEqual(hash_1, hash(objective_1))
+        self.assertEqual(hash_1, hash(objective_1))
+
+    def test_hash_equals(self):
+        """Test that when two objects are equal their hashes are equal."""
+        weight = 42.0
+
+        objective_1 = Objective(eval_func=eval_func, weight=weight)
+        objective_2 = Objective(eval_func=eval_func, weight=weight)
+
+        self.assertEqual(hash(objective_1), hash(objective_2))
+        self.assertEqual(objective_1, objective_2)
 
     def test_objective_pickle(self):
         """Test that an Objective instance can be pickled and unpickled using
@@ -108,91 +159,128 @@ class TestFitness(unittest.TestCase):
         refer to the data passed into the constructor.
 
         """
-        int_type = Type(name='int')
-
+        score = 66.6
         weight = 42.0
 
         objective = Objective(eval_func=eval_func, weight=weight)
-        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
-        root = Node(operator=terminal_op)
-
-        solution = Solution(tree=Tree(root=root), objectives=(objective,))
-
-        score = weight * eval_func(solution)
 
         fitness = Fitness(score=score, objective=objective)
 
         self.assertIs(fitness.score, score)
         self.assertIs(fitness.objective, objective)
 
-    def test_fitness_hash(self):
-        """Test that two identically distinct Fitness objects which refer to
-        the same data have equal hashes.
-
-        """
-        int_type = Type(name='int')
-
+    def test_equals_reflexive(self):
+        """Test that an object equals itself."""
+        score = 66.6
         weight = 42.0
 
         objective = Objective(eval_func=eval_func, weight=weight)
-        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
-        root = Node(operator=terminal_op)
-
-        solution = Solution(tree=Tree(root=root), objectives=(objective,))
-
-        score = weight * eval_func(solution)
 
         fitness_1 = Fitness(score=score, objective=objective)
-        fitness_2 = Fitness(score=score, objective=objective)
+        fitness_2 = fitness_1
 
-        self.assertEqual(hash(fitness_1), hash(fitness_2))
+        self.assertIs(fitness_1, fitness_2)
+        self.assertEqual(fitness_1, fitness_2)
 
-    def test_fitness_equals(self):
-        """Test that two identically distinct Fitness objects which refer to
-        the same data are equal.
-
-        """
-        int_type = Type(name='int')
-
+    def test_equals_symmetric(self):
+        """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
+        score = 66.6
         weight = 42.0
+        another_weight = 66.6
 
-        objective = Objective(eval_func=eval_func, weight=weight)
-        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
-        root = Node(operator=terminal_op)
+        objective_1 = Objective(eval_func=eval_func, weight=weight)
+        another_objective = Objective(
+            eval_func=eval_func, weight=another_weight
+        )
 
-        solution = Solution(tree=Tree(root=root), objectives=(objective,))
+        fitness_1 = Fitness(score=score, objective=objective_1)
+        fitness_2 = Fitness(score=score, objective=objective_1)
+        another_fitness = Fitness(score=score, objective=another_objective)
 
-        score = weight * eval_func(solution)
-
-        fitness_1 = Fitness(score=score, objective=objective)
-        fitness_2 = Fitness(score=score, objective=objective)
+        self.assertFalse(fitness_1 is fitness_2)
 
         self.assertEqual(fitness_1, fitness_2)
         self.assertEqual(fitness_2, fitness_1)
 
-    def test_fitness_not_equals(self):
-        """Test that two Fitness objects which do not refer to the same data
-        are unequal.
+        self.assertFalse(fitness_1 is another_fitness)
 
-        """
-        int_type = Type(name='int')
+        self.assertNotEqual(fitness_1, another_fitness)
+        self.assertNotEqual(another_fitness, fitness_1)
 
+    def test_equals_transitive(self):
+        """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
+        score = 66.6
         weight = 42.0
 
-        objective = Objective(eval_func=eval_func, weight=weight)
-        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
-        root = Node(operator=terminal_op)
+        objective_1 = Objective(eval_func=eval_func, weight=weight)
 
-        solution = Solution(tree=Tree(root=root), objectives=(objective,))
+        fitness_1 = Fitness(score=score, objective=objective_1)
+        fitness_2 = Fitness(score=score, objective=objective_1)
+        fitness_3 = Fitness(score=score, objective=objective_1)
 
-        score_1 = weight * eval_func(solution)
-        score_2 = 666.666
+        self.assertFalse(fitness_1 is fitness_2)
+        self.assertFalse(fitness_2 is fitness_3)
+        self.assertFalse(fitness_1 is fitness_3)
 
-        fitness_1 = Fitness(score=score_1, objective=objective)
-        fitness_2 = Fitness(score=score_2, objective=objective)
+        self.assertEqual(fitness_1, fitness_2)
+        self.assertEqual(fitness_2, fitness_3)
+        self.assertEqual(fitness_1, fitness_3)
 
-        self.assertNotEqual(fitness_1, fitness_2)
-        self.assertNotEqual(fitness_2, fitness_1)
+    def test_equals_consistent(self):
+        """Test that repeated equals calls return the same value."""
+        score = 66.6
+        weight = 42.0
+        another_weight = 66.6
+
+        objective_1 = Objective(eval_func=eval_func, weight=weight)
+        another_objective = Objective(
+            eval_func=eval_func, weight=another_weight
+        )
+
+        fitness_1 = Fitness(score=score, objective=objective_1)
+        fitness_2 = Fitness(score=score, objective=objective_1)
+        another_fitness = Fitness(score=score, objective=another_objective)
+
+        self.assertFalse(fitness_1 is fitness_2)
+
+        self.assertEqual(fitness_1, fitness_2)
+        self.assertEqual(fitness_1, fitness_2)
+        self.assertEqual(fitness_1, fitness_2)
+
+        self.assertFalse(fitness_1 is another_fitness)
+
+        self.assertNotEqual(fitness_1, another_fitness)
+        self.assertNotEqual(fitness_1, another_fitness)
+        self.assertNotEqual(fitness_1, another_fitness)
+
+    def test_hash_consistent(self):
+        """Test that repeated hash calls yield the same value."""
+        score = 66.6
+        weight = 42.0
+
+        objective_1 = Objective(eval_func=eval_func, weight=weight)
+
+        fitness_1 = Fitness(score=score, objective=objective_1)
+        hash_1 = hash(fitness_1)
+
+        self.assertEqual(hash_1, hash(fitness_1))
+        self.assertEqual(hash_1, hash(fitness_1))
+        self.assertEqual(hash_1, hash(fitness_1))
+
+    def test_hash_equals(self):
+        """Test that when two objects are equal their hashes are equal."""
+        score = 66.6
+        weight = 42.0
+
+        objective_1 = Objective(eval_func=eval_func, weight=weight)
+
+        fitness_1 = Fitness(score=score, objective=objective_1)
+        fitness_2 = Fitness(score=score, objective=objective_1)
+
+        self.assertFalse(fitness_1 is fitness_2)
+
+        self.assertEqual(hash(fitness_1), hash(fitness_2))
+        self.assertEqual(fitness_1, fitness_2)
 
     def test_fitness_pickle(self):
         """Test that a Fitness instance can be pickled and unpickled using the
@@ -271,6 +359,270 @@ class TestFitness(unittest.TestCase):
 
 class TestSolution(unittest.TestCase):
 
+    def test_equals_reflexive(self):
+        """Test that an object equals itself."""
+        int_type = Type(name='int')
+
+        mock_eval_func = mock.Mock(return_value=66.6)
+
+        objective = Objective(eval_func=mock_eval_func, weight=42.0)
+
+        terminal_operator = Operator(
+            symbol=Symbol(name='term', dtype=int_type)
+        )
+
+        root_1 = Node(operator=terminal_operator)
+
+        tree_1 = Tree(root=root_1)
+
+        solution_1 = Solution(
+            tree=tree_1,
+            objectives=(objective,),
+            map_=futures_map
+        )
+        solution_2 = solution_1
+
+        self.assertIs(solution_1, solution_2)
+        self.assertEqual(solution_1, solution_2)
+
+        mock_eval_func.assert_called_once_with(solution_1)
+
+    def test_equals_symmetric(self):
+        """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
+        int_type = Type(name='int')
+
+        mock_eval_func = mock.Mock(return_value=66.6)
+
+        objective = Objective(eval_func=mock_eval_func, weight=42.0)
+
+        terminal_operator = Operator(
+            symbol=Symbol(name='term', dtype=int_type)
+        )
+        another_terminal_operator = Operator(
+            symbol=Symbol(name='another_term', dtype=int_type)
+        )
+
+        root_1 = Node(operator=terminal_operator)
+        root_2 = Node(operator=terminal_operator)
+        another_root = Node(operator=another_terminal_operator)
+
+        tree_1 = Tree(root=root_1)
+        tree_2 = Tree(root=root_2)
+        another_tree = Tree(root=another_root)
+
+        solution_1 = Solution(
+            tree=tree_1,
+            objectives=(objective,),
+            map_=futures_map
+        )
+        solution_2 = Solution(
+            tree=tree_2,
+            objectives=(objective,),
+            map_=futures_map
+        )
+        another_solution = Solution(
+            tree=another_tree,
+            objectives=(objective,),
+            map_=futures_map
+        )
+
+        self.assertFalse(solution_1 is solution_2)
+
+        self.assertEqual(solution_1, solution_2)
+        self.assertEqual(solution_2, solution_1)
+
+        self.assertFalse(solution_1 is another_solution)
+
+        self.assertNotEqual(solution_1, another_solution)
+        self.assertNotEqual(another_solution, solution_1)
+
+        mock_eval_func.assert_has_calls(
+                calls=(
+                    mock.call(solution_1),
+                    mock.call(solution_2),
+                    mock.call(another_solution)
+                )
+        )
+
+        self.assertEqual(mock_eval_func.call_count, 3)
+
+    def test_equals_transitive(self):
+        """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
+        int_type = Type(name='int')
+
+        mock_eval_func = mock.Mock(return_value=66.6)
+
+        objective = Objective(eval_func=mock_eval_func, weight=42.0)
+
+        terminal_operator = Operator(
+            symbol=Symbol(name='term', dtype=int_type)
+        )
+
+        root_1 = Node(operator=terminal_operator)
+        root_2 = Node(operator=terminal_operator)
+
+        tree_1 = Tree(root=root_1)
+        tree_2 = Tree(root=root_2)
+
+        solution_1 = Solution(
+            tree=tree_1,
+            objectives=(objective,),
+            map_=futures_map
+        )
+        solution_2 = Solution(
+            tree=tree_2,
+            objectives=(objective,),
+            map_=futures_map
+        )
+        solution_3 = Solution(
+            tree=tree_2,
+            objectives=(objective,),
+            map_=futures_map
+        )
+
+        self.assertFalse(solution_1 is solution_2)
+        self.assertFalse(solution_2 is solution_3)
+        self.assertFalse(solution_1 is solution_3)
+
+        self.assertEqual(solution_1, solution_2)
+        self.assertEqual(solution_2, solution_3)
+        self.assertEqual(solution_1, solution_3)
+
+        mock_eval_func.assert_has_calls(
+            calls=(
+                mock.call(solution_1),
+                mock.call(solution_2),
+                mock.call(solution_3)
+            )
+        )
+
+        self.assertEqual(mock_eval_func.call_count, 3)
+
+    def test_equals_consistent(self):
+        """Test that repeated equals calls return the same value."""
+        int_type = Type(name='int')
+
+        mock_eval_func = mock.Mock(return_value=66.6)
+
+        objective = Objective(eval_func=mock_eval_func, weight=42.0)
+
+        terminal_operator = Operator(
+            symbol=Symbol(name='term', dtype=int_type)
+        )
+        another_terminal_operator = Operator(
+            symbol=Symbol(name='another_term', dtype=int_type)
+        )
+
+        root_1 = Node(operator=terminal_operator)
+        root_2 = Node(operator=terminal_operator)
+        another_root = Node(operator=another_terminal_operator)
+
+        tree_1 = Tree(root=root_1)
+        tree_2 = Tree(root=root_2)
+        another_tree = Tree(root=another_root)
+
+        solution_1 = Solution(
+            tree=tree_1,
+            objectives=(objective,),
+            map_=futures_map
+        )
+        solution_2 = Solution(
+            tree=tree_2,
+            objectives=(objective,),
+            map_=futures_map
+        )
+        another_solution = Solution(
+            tree=another_tree,
+            objectives=(objective,),
+            map_=futures_map
+        )
+
+        self.assertFalse(solution_1 is solution_2)
+        self.assertFalse(solution_1 is another_solution)
+
+        for _ in xrange(100):
+            self.assertEqual(solution_1, solution_2)
+            self.assertNotEqual(solution_1, another_solution)
+
+        mock_eval_func.assert_has_calls(
+                calls=(
+                    mock.call(solution_1),
+                    mock.call(solution_2),
+                    mock.call(another_solution)
+                )
+        )
+
+        self.assertEqual(mock_eval_func.call_count, 3)
+
+    def test_hash_consistent(self):
+        """Test that repeated hash calls yield the same value."""
+        int_type = Type(name='int')
+
+        mock_eval_func = mock.Mock(return_value=66.6)
+
+        objective = Objective(eval_func=mock_eval_func, weight=42.0)
+
+        terminal_operator = Operator(
+            symbol=Symbol(name='term', dtype=int_type)
+        )
+
+        root_1 = Node(operator=terminal_operator)
+
+        tree_1 = Tree(root=root_1)
+
+        solution_1 = Solution(
+            tree=tree_1,
+            objectives=(objective,),
+            map_=futures_map
+        )
+        hash_1 = hash(solution_1)
+
+        for _ in xrange(100):
+            self.assertEqual(hash_1, hash(solution_1))
+
+        mock_eval_func.assert_called_once_with(solution_1)
+
+    def test_hash_equals(self):
+        """Test that when two objects are equal their hashes are equal."""
+        int_type = Type(name='int')
+
+        mock_eval_func = mock.Mock(return_value=66.6)
+
+        objective = Objective(eval_func=mock_eval_func, weight=42.0)
+
+        terminal_operator = Operator(
+            symbol=Symbol(name='term', dtype=int_type)
+        )
+
+        root_1 = Node(operator=terminal_operator)
+        root_2 = Node(operator=terminal_operator)
+
+        tree_1 = Tree(root=root_1)
+        tree_2 = Tree(root=root_2)
+
+        solution_1 = Solution(
+            tree=tree_1,
+            objectives=(objective,),
+            map_=futures_map
+        )
+        solution_2 = Solution(
+            tree=tree_2,
+            objectives=(objective,),
+            map_=futures_map
+        )
+
+        self.assertEqual(hash(solution_1), hash(solution_2))
+        self.assertEqual(solution_1, solution_2)
+
+        mock_eval_func.assert_has_calls(
+                calls=(
+                    mock.call(solution_1),
+                    mock.call(solution_2)
+                )
+        )
+
+        self.assertEqual(mock_eval_func.call_count, 2)
+
     def test_solution_attributes(self):
         """Test that a Solution's *tree*, *objectives*, and *map* attributes
         refer to the data passed into the constructor.
@@ -305,12 +657,12 @@ class TestSolution(unittest.TestCase):
         self.maxDiff = None
 
         def eval_func_1(solution):
-            log.debug('Calling eval_func_1')
+            LOG.debug('Calling eval_func_1')
             time.sleep(0.01)  # eval_func_1 hopefully evaluated second
             return 66.6
 
         def eval_func_2(solution):
-            log.debug('Calling eval_func_2')
+            LOG.debug('Calling eval_func_2')
             return 66.7
 
         objective_1 = Objective(eval_func=eval_func_1, weight=42.0)
@@ -437,47 +789,6 @@ class TestSolution(unittest.TestCase):
         )
         self.assertEqual(mock_eval_func_3.call_count, 3)
 
-    def test_solution_hash(self):
-        """Test that two identically-distinct Solution instances which refer to
-        equivalent trees and equivalent objectives have the same hash value.
-
-        """
-        int_type = Type(name='int')
-
-        mock_eval_func = mock.Mock(return_value=66.6)
-
-        objective = Objective(eval_func=mock_eval_func, weight=42.0)
-
-        terminal_operator = Operator(
-            symbol=Symbol(name='term', dtype=int_type)
-        )
-
-        root_1 = Node(operator=terminal_operator)
-        root_2 = Node(operator=terminal_operator)
-
-        tree_1 = Tree(root=root_1)
-        tree_2 = Tree(root=root_2)
-
-        solution_1 = Solution(
-            tree=tree_1,
-            objectives=(objective,),
-            map_=futures_map
-        )
-        solution_2 = Solution(
-            tree=tree_2,
-            objectives=(objective,),
-            map_=futures_map
-        )
-
-        for _ in xrange(100):
-            self.assertEqual(hash(solution_1), hash(solution_2))
-
-        mock_eval_func.assert_has_calls(
-                calls=(mock.call(solution_1), mock.call(solution_2))
-        )
-
-        self.assertEqual(mock_eval_func.call_count, 2)
-
     def test_solution_len(self):
         """Test that a solution
 
@@ -523,89 +834,6 @@ class TestSolution(unittest.TestCase):
             self.assertEqual(len(solution_1), len(solution_2))
 
         mock_eval_func.assert_not_called()
-
-    def test_solution_equals(self):
-        """Test that two identically distinct Solutions are equal if their
-        hashes are equal.
-
-        """
-        int_type = Type(name='int')
-
-        mock_eval_func = mock.Mock(return_value=66.6)
-
-        objective = Objective(eval_func=mock_eval_func, weight=42.0)
-
-        terminal_operator = Operator(
-            symbol=Symbol(name='term', dtype=int_type)
-        )
-
-        root_1 = Node(operator=terminal_operator)
-        root_2 = Node(operator=terminal_operator)
-
-        tree_1 = Tree(root=root_1)
-        tree_2 = Tree(root=root_2)
-
-        solution_1 = Solution(
-            tree=tree_1,
-            objectives=(objective,),
-            map_=futures_map
-        )
-        solution_2 = Solution(
-            tree=tree_2,
-            objectives=(objective,),
-            map_=futures_map
-        )
-
-        for _ in xrange(100):
-            self.assertEqual(solution_1, solution_2)
-            self.assertEqual(solution_2, solution_1)
-
-        mock_eval_func.assert_has_calls(
-                calls=(mock.call(solution_1), mock.call(solution_2))
-        )
-
-        self.assertEqual(mock_eval_func.call_count, 2)
-
-    def test_solution_not_equals(self):
-        """Test that two solutions are not equal if their hashes are not equal.
-
-        """
-        int_type = Type(name='int')
-
-        mock_eval_func = mock.Mock(side_effect=[66.6, 66.7])
-
-        objective = Objective(eval_func=mock_eval_func, weight=42.0)
-
-        terminal_operator = Operator(
-            symbol=Symbol(name='term', dtype=int_type)
-        )
-
-        root_1 = Node(operator=terminal_operator)
-        root_2 = Node(operator=terminal_operator)
-
-        tree_1 = Tree(root=root_1)
-        tree_2 = Tree(root=root_2)
-
-        solution_1 = Solution(
-            tree=tree_1,
-            objectives=(objective,),
-            map_=futures_map
-        )
-        solution_2 = Solution(
-            tree=tree_2,
-            objectives=(objective,),
-            map_=futures_map
-        )
-
-        for _ in xrange(100):
-            self.assertNotEqual(solution_1, solution_2)
-            self.assertNotEqual(solution_2, solution_1)
-
-        mock_eval_func.assert_has_calls(
-            calls=(mock.call(solution_1), mock.call(solution_2))
-        )
-
-        self.assertEqual(mock_eval_func.call_count, 2)
 
     def test_solution_pickle(self):
         """Test that a Solution instance can be pickled and unpickled using the
@@ -830,9 +1058,9 @@ class TestSolution(unittest.TestCase):
         candidate = sorted([solution_2, solution_1, solution_4, solution_3])
 
         for idx, solution in enumerate(candidate):
-            log.info('checking solution %d', idx)
+            LOG.info('checking solution %d', idx)
             self.assertIs(solution, expected[idx])
-            log.info('verified solution %d', idx)
+            LOG.info('verified solution %d', idx)
 
         mock_eval_func_1.assert_has_calls(
             calls=(

@@ -197,10 +197,15 @@ class Node(object):
         return self._hash
 
     def __eq__(self, other):
-        return hash(self) == hash(other)
+        return (
+            self.operator == other.operator and
+            self.left == other.left and
+            self.right == other.right and
+            self.depth == other.depth
+        )
 
     def __ne__(self, other):
-        return hash(self) != hash(other)
+        return not self.__eq__(other)
 
     def __repr__(self):
         return (
@@ -406,10 +411,10 @@ class Tree(object):
         return self._hash
 
     def __eq__(self, other):
-        return hash(self) == hash(other)
+        return all(s == o for s, o in zip(self, other))
 
     def __ne__(self, other):
-        return hash(self) != hash(other)
+        return not self.__eq__(other)
 
     def __repr__(self):
         return 'Tree(root={root})'.format(root=repr(self.root))

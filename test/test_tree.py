@@ -10,6 +10,176 @@ from zoonomia.types import Type
 
 class TestNode(unittest.TestCase):
 
+    def test_equals_reflexive(self):
+        """Test that an object equals itself."""
+        some_type = Type(name='SomeType')
+        signature = (some_type,)
+        dtype = some_type
+
+        basis_op = Operator(
+            symbol=Symbol('func', dtype=dtype), signature=signature
+        )
+        terminal_op = Operator(symbol=Symbol(name='term', dtype=dtype))
+
+        node_1 = Node(operator=basis_op)
+        terminal_node_1 = Node(operator=terminal_op)
+
+        node_1.add_child(child=terminal_node_1, position=0)
+
+        node_2 = node_1
+
+        self.assertIs(node_1, node_2)
+        self.assertEquals(node_1, node_2)
+
+    def test_equals_symmetric(self):
+        """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
+        some_type = Type(name='SomeType')
+        signature = (some_type,)
+        dtype = some_type
+
+        basis_op = Operator(
+            symbol=Symbol('func', dtype=dtype), signature=signature
+        )
+        terminal_op = Operator(symbol=Symbol(name='term', dtype=dtype))
+
+        node_1 = Node(operator=basis_op)
+        terminal_node_1 = Node(operator=terminal_op)
+
+        node_1.add_child(child=terminal_node_1, position=0)
+
+        node_2 = Node(operator=basis_op)
+        terminal_node_2 = Node(operator=terminal_op)
+
+        node_2.add_child(child=terminal_node_2, position=0)
+
+        another_node = Node(operator=terminal_op)
+
+        self.assertFalse(node_1 is node_2)
+
+        self.assertEqual(node_1, node_2)
+        self.assertEqual(node_2, node_1)
+
+        self.assertFalse(node_1 is another_node)
+
+        self.assertNotEqual(node_1, another_node)
+        self.assertNotEqual(another_node, node_1)
+
+    def test_equals_transitive(self):
+        """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
+        some_type = Type(name='SomeType')
+        signature = (some_type,)
+        dtype = some_type
+
+        basis_op = Operator(
+            symbol=Symbol('func', dtype=dtype), signature=signature
+        )
+        terminal_op = Operator(symbol=Symbol(name='term', dtype=dtype))
+
+        node_1 = Node(operator=basis_op)
+        terminal_node_1 = Node(operator=terminal_op)
+
+        node_1.add_child(child=terminal_node_1, position=0)
+
+        node_2 = Node(operator=basis_op)
+        terminal_node_2 = Node(operator=terminal_op)
+
+        node_2.add_child(child=terminal_node_2, position=0)
+
+        node_3 = Node(operator=basis_op)
+        terminal_node_3 = Node(operator=terminal_op)
+
+        node_3.add_child(child=terminal_node_3, position=0)
+
+        self.assertFalse(node_1 is node_2)
+        self.assertFalse(node_2 is node_3)
+        self.assertFalse(node_1 is node_3)
+
+        self.assertEqual(node_1, node_2)
+        self.assertEqual(node_2, node_3)
+        self.assertEqual(node_1, node_3)
+
+    def test_equals_consistent(self):
+        """Test that repeated equals calls return the same value."""
+        some_type = Type(name='SomeType')
+        signature = (some_type,)
+        dtype = some_type
+
+        basis_op = Operator(
+            symbol=Symbol('func', dtype=dtype), signature=signature
+        )
+        terminal_op = Operator(symbol=Symbol(name='term', dtype=dtype))
+
+        node_1 = Node(operator=basis_op)
+        terminal_node_1 = Node(operator=terminal_op)
+
+        node_1.add_child(child=terminal_node_1, position=0)
+
+        node_2 = Node(operator=basis_op)
+        terminal_node_2 = Node(operator=terminal_op)
+
+        node_2.add_child(child=terminal_node_2, position=0)
+
+        another_node = Node(operator=terminal_op)
+
+        self.assertFalse(node_1 is node_2)
+
+        self.assertEqual(node_1, node_2)
+        self.assertEqual(node_1, node_2)
+        self.assertEqual(node_1, node_2)
+
+        self.assertFalse(node_1 is another_node)
+
+        self.assertNotEqual(node_1, another_node)
+        self.assertNotEqual(node_1, another_node)
+        self.assertNotEqual(node_1, another_node)
+
+    def test_hash_consistent(self):
+        """Test that repeated hash calls yield the same value."""
+        some_type = Type(name='SomeType')
+        signature = (some_type,)
+        dtype = some_type
+
+        basis_op = Operator(
+            symbol=Symbol('func', dtype=dtype), signature=signature
+        )
+        terminal_op = Operator(symbol=Symbol(name='term', dtype=dtype))
+
+        node_1 = Node(operator=basis_op)
+        terminal_node_1 = Node(operator=terminal_op)
+
+        node_1.add_child(child=terminal_node_1, position=0)
+        hash_1 = hash(node_1)
+
+        self.assertEqual(hash_1, hash(node_1))
+        self.assertEqual(hash_1, hash(node_1))
+        self.assertEqual(hash_1, hash(node_1))
+
+    def test_hash_equals(self):
+        """Test that when two objects are equal their hashes are equal."""
+        some_type = Type(name='SomeType')
+        signature = (some_type,)
+        dtype = some_type
+
+        basis_op = Operator(
+            symbol=Symbol('func', dtype=dtype), signature=signature
+        )
+        terminal_op = Operator(symbol=Symbol(name='term', dtype=dtype))
+
+        node_1 = Node(operator=basis_op)
+        terminal_node_1 = Node(operator=terminal_op)
+
+        node_1.add_child(child=terminal_node_1, position=0)
+
+        node_2 = Node(operator=basis_op)
+        terminal_node_2 = Node(operator=terminal_op)
+
+        node_2.add_child(child=terminal_node_2, position=0)
+
+        self.assertFalse(node_1 is node_2)
+
+        self.assertEqual(hash(node_1), hash(node_2))
+        self.assertEqual(node_1, node_2)
+
     def test_node_operator_attribute(self):
         """Test that the *operator* attribute is a reference to the basis
         operator passed into the constructor.
@@ -167,82 +337,6 @@ class TestNode(unittest.TestCase):
         self.assertEqual(1, terminal_node_2.depth)
         self.assertEqual(1, terminal_node_3.depth)
 
-    def test_node_hash(self):
-        some_type = Type(name='SomeType')
-        signature = (some_type,)
-        dtype = some_type
-
-        basis_op = Operator(
-            symbol=Symbol(name='func', dtype=dtype), signature=signature
-        )
-        terminal_op = Operator(symbol=Symbol(name='term', dtype=dtype))
-
-        node_1 = Node(operator=basis_op)
-        terminal_node_1 = Node(operator=terminal_op)
-
-        node_1.add_child(child=terminal_node_1, position=0)
-
-        node_2 = Node(operator=basis_op)
-        terminal_node_2 = Node(operator=terminal_op)
-
-        node_2.add_child(child=terminal_node_2, position=0)
-
-        self.assertEqual(hash(node_1), hash(node_2))
-
-    def test_node_equals(self):
-        some_type = Type(name='SomeType')
-        signature = (some_type,)
-        dtype = some_type
-
-        basis_op = Operator(
-            symbol=Symbol('func', dtype=dtype), signature=signature
-        )
-        terminal_op = Operator(symbol=Symbol(name='term', dtype=dtype))
-
-        node_1 = Node(operator=basis_op)
-        terminal_node_1 = Node(operator=terminal_op)
-
-        node_1.add_child(child=terminal_node_1, position=0)
-
-        node_2 = Node(operator=basis_op)
-        terminal_node_2 = Node(operator=terminal_op)
-
-        node_2.add_child(child=terminal_node_2, position=0)
-
-        self.assertEqual(node_1, node_2)
-        self.assertEqual(node_2, node_1)
-
-    def test_node_not_equals(self):
-        some_type = Type(name='SomeType')
-        some_other_type = Type(name='SomeOtherType')
-        signature_1 = (some_type,)
-        signature_2 = (some_other_type,)
-        dtype_1 = some_type
-        dtype_2 = some_other_type
-
-        basis_op_1 = Operator(
-            symbol=Symbol(name='func1', dtype=some_type), signature=signature_1
-        )
-        basis_op_2 = Operator(
-            symbol=Symbol(name='func2', dtype=some_other_type),
-            signature=signature_2
-        )
-        terminal_op_1 = Operator(symbol=Symbol(name='term1', dtype=dtype_1))
-        terminal_op_2 = Operator(symbol=Symbol(name='term2', dtype=dtype_2))
-
-        node_1 = Node(operator=basis_op_1)
-        terminal_node_1 = Node(operator=terminal_op_1)
-
-        node_1.add_child(child=terminal_node_1, position=0)
-
-        node_2 = Node(operator=basis_op_2)
-        terminal_node_2 = Node(operator=terminal_op_2)
-
-        node_2.add_child(child=terminal_node_2, position=0)
-
-        self.assertNotEqual(node_1, node_2)
-        self.assertNotEqual(node_2, node_1)
-
     def test_node_pickle(self):
         """Test that a Node instance can be pickled and unpickled using the
         default protocol.
@@ -281,6 +375,227 @@ class TestNode(unittest.TestCase):
 
 
 class TestTree(unittest.TestCase):
+
+    def test_equals_reflexive(self):
+        """Test that an object equals itself."""
+        int_type = Type(name='int')
+        id_op_1 = Operator(
+            symbol=Symbol(name='identity_1', dtype=int_type),
+            signature=(int_type,)
+        )
+
+        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
+
+        node_11 = Node(operator=id_op_1)
+        node_12 = Node(operator=terminal_op)
+
+        root_1 = Node(operator=id_op_1)
+        root_1.add_child(child=node_11, position=0)
+        node_11.add_child(child=node_12, position=0)
+
+        tree_1 = Tree(root=root_1)
+        tree_2 = tree_1
+
+        self.assertIs(tree_1, tree_2)
+        self.assertEquals(tree_1, tree_2)
+
+    def test_equals_symmetric(self):
+        """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
+        int_type = Type(name='int')
+        id_op_1 = Operator(
+            symbol=Symbol(name='identity_1', dtype=int_type),
+            signature=(int_type,)
+        )
+        id_op_2 = Operator(
+            symbol=Symbol(name='identity_2', dtype=int_type),
+            signature=(int_type,)
+        )
+
+        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
+
+        node_11 = Node(operator=id_op_1)
+        node_12 = Node(operator=terminal_op)
+        node_21 = Node(operator=id_op_1)
+        node_22 = Node(operator=terminal_op)
+
+        another_node_1 = Node(operator=id_op_2)
+        another_node_2 = Node(operator=terminal_op)
+
+        root_1 = Node(operator=id_op_1)
+        root_1.add_child(child=node_11, position=0)
+        node_11.add_child(child=node_12, position=0)
+
+        root_2 = Node(operator=id_op_1)
+        root_2.add_child(child=node_21, position=0)
+        node_21.add_child(child=node_22, position=0)
+
+        another_root = Node(operator=id_op_2)
+        another_root.add_child(child=another_node_1, position=0)
+        another_node_1.add_child(child=another_node_2, position=0)
+
+        tree_1 = Tree(root=root_1)
+        tree_2 = Tree(root=root_2)
+        another_tree = Tree(root=another_root)
+
+        self.assertFalse(tree_1 is tree_2)
+
+        self.assertEqual(tree_1, tree_2)
+        self.assertEqual(tree_2, tree_1)
+
+        self.assertFalse(tree_1 is another_tree)
+
+        self.assertNotEqual(tree_1, another_tree)
+        self.assertNotEqual(another_tree, tree_1)
+
+    def test_equals_transitive(self):
+        """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
+        int_type = Type(name='int')
+        id_op_1 = Operator(
+            symbol=Symbol(name='identity_1', dtype=int_type),
+            signature=(int_type,)
+        )
+        id_op_2 = Operator(
+            symbol=Symbol(name='identity_2', dtype=int_type),
+            signature=(int_type,)
+        )
+
+        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
+
+        node_11 = Node(operator=id_op_1)
+        node_12 = Node(operator=terminal_op)
+        node_21 = Node(operator=id_op_1)
+        node_22 = Node(operator=terminal_op)
+        node_31 = Node(operator=id_op_1)
+        node_32 = Node(operator=terminal_op)
+
+        root_1 = Node(operator=id_op_2)
+        root_1.add_child(child=node_11, position=0)
+        node_11.add_child(child=node_12, position=0)
+
+        root_2 = Node(operator=id_op_2)
+        root_2.add_child(child=node_21, position=0)
+        node_21.add_child(child=node_22, position=0)
+
+        root_3 = Node(operator=id_op_2)
+        root_3.add_child(child=node_31, position=0)
+        node_31.add_child(child=node_32, position=0)
+
+        tree_1 = Tree(root=root_1)
+        tree_2 = Tree(root=root_2)
+        tree_3 = Tree(root=root_3)
+
+        self.assertFalse(tree_1 is tree_2)
+        self.assertFalse(tree_2 is tree_3)
+        self.assertFalse(tree_1 is tree_3)
+
+        self.assertEquals(tree_1, tree_2)
+        self.assertEquals(tree_2, tree_3)
+        self.assertEquals(tree_1, tree_3)
+
+    def test_equals_consistent(self):
+        """Test that repeated equals calls return the same value."""
+        int_type = Type(name='int')
+        id_op_1 = Operator(
+            symbol=Symbol(name='identity_1', dtype=int_type),
+            signature=(int_type,)
+        )
+        id_op_2 = Operator(
+            symbol=Symbol(name='identity_2', dtype=int_type),
+            signature=(int_type,)
+        )
+
+        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
+
+        node_11 = Node(operator=id_op_1)
+        node_12 = Node(operator=terminal_op)
+        node_21 = Node(operator=id_op_1)
+        node_22 = Node(operator=terminal_op)
+
+        another_node_1 = Node(operator=id_op_2)
+        another_node_2 = Node(operator=terminal_op)
+
+        root_1 = Node(operator=id_op_1)
+        root_1.add_child(child=node_11, position=0)
+        node_11.add_child(child=node_12, position=0)
+
+        root_2 = Node(operator=id_op_1)
+        root_2.add_child(child=node_21, position=0)
+        node_21.add_child(child=node_22, position=0)
+
+        another_root = Node(operator=id_op_2)
+        another_root.add_child(child=another_node_1, position=0)
+        another_node_1.add_child(child=another_node_2, position=0)
+
+        tree_1 = Tree(root=root_1)
+        tree_2 = Tree(root=root_2)
+        another_tree = Tree(root=another_root)
+
+        self.assertFalse(tree_1 is tree_2)
+
+        self.assertEqual(tree_1, tree_2)
+        self.assertEqual(tree_1, tree_2)
+        self.assertEqual(tree_1, tree_2)
+
+        self.assertFalse(tree_1 is another_tree)
+
+        self.assertNotEqual(tree_1, another_tree)
+        self.assertNotEqual(tree_1, another_tree)
+        self.assertNotEqual(tree_1, another_tree)
+
+    def test_hash_consistent(self):
+        """Test that repeated hash calls yield the same value."""
+        int_type = Type(name='int')
+        id_op_1 = Operator(
+            symbol=Symbol(name='identity_1', dtype=int_type),
+            signature=(int_type,)
+        )
+
+        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
+
+        node_11 = Node(operator=id_op_1)
+        node_12 = Node(operator=terminal_op)
+
+        root_1 = Node(operator=id_op_1)
+        root_1.add_child(child=node_11, position=0)
+        node_11.add_child(child=node_12, position=0)
+
+        tree_1 = Tree(root=root_1)
+        hash_1 = hash(tree_1)
+
+        self.assertEqual(hash_1, hash(tree_1))
+        self.assertEqual(hash_1, hash(tree_1))
+        self.assertEqual(hash_1, hash(tree_1))
+
+    def test_hash_equals(self):
+        """Test that when two objects are equal their hashes are equal."""
+        int_type = Type(name='int')
+        id_op_1 = Operator(
+            symbol=Symbol(name='identity_1', dtype=int_type),
+            signature=(int_type,)
+        )
+
+        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
+
+        node_11 = Node(operator=id_op_1)
+        node_12 = Node(operator=terminal_op)
+        node_21 = Node(operator=id_op_1)
+        node_22 = Node(operator=terminal_op)
+
+        root_1 = Node(operator=id_op_1)
+        root_1.add_child(child=node_11, position=0)
+        node_11.add_child(child=node_12, position=0)
+
+        root_2 = Node(operator=id_op_1)
+        root_2.add_child(child=node_21, position=0)
+        node_21.add_child(child=node_22, position=0)
+
+        tree_1 = Tree(root=root_1)
+        tree_2 = Tree(root=root_2)
+
+        self.assertFalse(tree_1 is tree_2)
+
+        self.assertEqual(hash(tree_1), hash(tree_2))
+        self.assertEqual(tree_1, tree_2)
 
     def test_zero_depth_tree_post_order_iter(self):
         """Test that a tree consisting of just one Node behaves as expected
@@ -1663,94 +1978,6 @@ class TestTree(unittest.TestCase):
 
         tree = Tree(root=node_1)
         self.assertEqual(6, len(tree))
-
-    def test_tree_hash(self):
-        int_type = Type(name='int')
-        id_op_1 = Operator(
-            symbol=Symbol(name='identity', dtype=int_type),
-            signature=(int_type,)
-        )
-        id_op_2 = Operator(
-            symbol=Symbol(name='identity', dtype=int_type),
-            signature=(int_type,)
-        )
-
-        x = Operator(symbol=Symbol(name='x', dtype=int_type))
-
-        node_1 = Node(operator=x)
-        node_2 = Node(operator=id_op_2)
-        node_3 = Node(operator=id_op_1)
-
-        node_3.add_child(child=node_2, position=0)
-        node_2.add_child(child=node_1, position=0)
-
-        tree_1 = Tree(root=node_3)
-        tree_2 = Tree(root=node_3)
-
-        self.assertEqual(hash(tree_1), hash(tree_2))
-
-    def test_tree_equals(self):
-        int_type = Type(name='int')
-        id_op_1 = Operator(
-            symbol=Symbol(name='identity_1', dtype=int_type),
-            signature=(int_type,)
-        )
-        id_op_2 = Operator(
-            symbol=Symbol(name='identity_2', dtype=int_type),
-            signature=(int_type,)
-        )
-
-        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
-
-        node_11 = Node(operator=terminal_op)
-        node_12 = Node(operator=terminal_op)
-        node_21 = Node(operator=id_op_1)
-        node_22 = Node(operator=id_op_1)
-
-        root_1 = Node(operator=id_op_2)
-        root_1.add_child(child=node_21, position=0)
-        node_21.add_child(child=node_11, position=0)
-
-        root_2 = Node(operator=id_op_2)
-        root_2.add_child(child=node_22, position=0)
-        node_22.add_child(child=node_12, position=0)
-
-        tree_1 = Tree(root=root_1)
-        tree_2 = Tree(root=root_2)
-
-        self.assertEqual(tree_1, tree_2)
-        self.assertEqual(tree_2, tree_1)
-
-    def test_tree_not_equals(self):
-        int_type = Type(name='int')
-        id_op_1 = Operator(
-            symbol=Symbol('identity_1', dtype=int_type), signature=(int_type,)
-        )
-        id_op_2 = Operator(
-            symbol=Symbol('identity_2', dtype=int_type), signature=(int_type,)
-        )
-
-        terminal_op_1 = Operator(symbol=Symbol(name='term1', dtype=int_type))
-        terminal_op_2 = Operator(symbol=Symbol(name='term2', dtype=int_type))
-
-        node_11 = Node(operator=terminal_op_1)
-        node_12 = Node(operator=terminal_op_2)
-        node_21 = Node(operator=id_op_2)
-        node_22 = Node(operator=id_op_1)
-
-        root_1 = Node(operator=id_op_1)
-        root_1.add_child(child=node_21, position=0)
-        node_21.add_child(child=node_11, position=0)
-
-        root_2 = Node(operator=id_op_2)
-        root_2.add_child(child=node_22, position=0)
-        node_22.add_child(child=node_12, position=0)
-
-        tree_1 = Tree(root=root_1)
-        tree_2 = Tree(root=root_2)
-
-        self.assertNotEqual(tree_1, tree_2)
-        self.assertNotEqual(tree_2, tree_1)
 
     def test_tree_pickle(self):
         """Test that a Tree instance can be pickled and unpickled using the
