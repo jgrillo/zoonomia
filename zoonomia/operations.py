@@ -336,7 +336,9 @@ def _ramped_half_and_half_generator(
 
 
 def _random_depth_counts(max_depth, population_size, rng):
-    counts = {d + 2: 0 for d in xrange(max_depth - 1)}
+    # computes a histogram of initial tree depths for a population having
+    # *population_size* individuals.
+    counts = {d + 1: 0 for d in xrange(max_depth)}
     for _ in xrange(population_size):
         counts[rng.choice(counts.keys())] += 1
     return counts

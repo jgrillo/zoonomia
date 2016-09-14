@@ -1,11 +1,12 @@
 import unittest
 import mock
+import random
 
 from zoonomia.lang import Symbol, Operator, OperatorTable
 from zoonomia.types import Type, GenericType, ParametrizedType
 from zoonomia.operations import (
     full, grow, ramped_half_and_half, mutate_subtree, mutate_node,
-    crossover_subtree, tournament_select
+    crossover_subtree, tournament_select, _random_depth_counts
 )
 from zoonomia.tree import Tree, Node
 from zoonomia.solution import Solution, Objective
@@ -349,12 +350,61 @@ class TestGrow(unittest.TestCase):
 
 class TestRampedHalfAndHalf(unittest.TestCase):
 
-    @mock.patch('random.Random')
-    def test_random_depth_counts(self, MockRandom):
-        """
+    def test_random_depth_counts_normalized(self):
+        """Test that _random_depth_counts returns a histogram s.t. the total
+        number of depths is equal to the population_size parameter.
 
         """
-        raise NotImplementedError()  # FIXME
+        max_depth = 666
+        population_size = 66666
+        depth_counts = _random_depth_counts(
+            max_depth=max_depth,
+            population_size=population_size,
+            rng=random.Random()
+        )
+
+        self.assertEqual(
+            sum(depth_counts[k] for k in depth_counts.keys()),
+            population_size
+        )
+
+    def test_random_depth_counts_dimensions(self):
+        """Test that _random_depth_counts returns a histogram s.t. the range of
+        depth counts equals the max_depth parameter, and the interval of that
+        range is [1, max_depth].
+
+        """
+        max_depth = 666
+        population_size = 66666
+        depth_counts = _random_depth_counts(
+            max_depth=max_depth,
+            population_size=population_size,
+            rng=random.Random()
+        )
+
+        self.assertEqual(len(depth_counts.keys()), max_depth)
+        self.assertEqual(sorted(depth_counts.keys())[0], 1)
+        self.assertEqual(sorted(depth_counts.keys())[-1], max_depth)
+
+    @mock.patch('random.Random')
+    def test_random_depth_counts(self, MockRandom):
+        """Test that _random_depth_counts returns a histogram of depth counts
+        having the expected distribution.
+
+        """
+        max_depth = 3
+        population_size = 9
+        rng = MockRandom.return_value
+        rng.choice = mock.Mock(side_effect=[1, 2, 3, 1, 2, 3, 1, 2, 3])
+
+        counts = _random_depth_counts(
+            max_depth=max_depth,
+            population_size=population_size,
+            rng=rng
+        )
+
+        for k in counts:
+            self.assertEqual(counts[k], 3)
 
     @mock.patch('random.Random')
     def test_ramped_half_and_half_max_depth_1_same_as_full(self, MockRandom):
