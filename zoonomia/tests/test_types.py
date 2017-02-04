@@ -1,365 +1,284 @@
 import pickle
 import unittest
 
+import hypothesis.strategies as st
+
+from hypothesis import given
+
 from zoonomia.types import Type, ParametrizedType, GenericType
+
+from zoonomia.tests.strategies.types import (
+    types, distinct_types, generic_types, parametrized_types,
+    distinct_parametrized_types, distinct_generic_types
+)
 
 
 class TestType(unittest.TestCase):
 
-    def test_equals_reflexive(self):
-        """Test that an object equals itself."""
-        type1 = Type(name='type', meta='meta')
-        type2 = type1
-
+    @given(st.shared(types(), key='a'), st.shared(types(), key='a'))
+    def test_equals_reflexive(self, type1, type2):
         self.assertIs(type1, type2)
         self.assertEqual(type1, type2)
 
-    def test_equals_symmetric(self):
+    @given(st.data())
+    def test_equals_symmetric(self, data):
         """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
-        type1 = Type(name='type', meta='meta')
-        type2 = Type(name='type', meta='meta')
-        another_type = Type(name='another_type', meta='meta')
+        d = data.draw(distinct_types())
+        type1 = d['type1']
+        another_type = d['another_type']
 
-        self.assertFalse(type1 is type2)
+        type2 = Type(type1.name, type1.meta)
 
         self.assertEqual(type1, type2)
         self.assertEqual(type2, type1)
 
-        self.assertFalse(type1 is another_type)
-
         self.assertNotEqual(type1, another_type)
         self.assertNotEqual(another_type, type1)
 
-    def test_equals_transitive(self):
+    @given(
+        st.shared(types(), key='a'),
+        st.shared(types(), key='a').map(lambda t: Type(t.name, t.meta)),
+        st.shared(types(), key='a').map(lambda t: Type(t.name, t.meta))
+    )
+    def test_equals_transitive(self, type1, type2, type3):
         """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
-        type1 = Type(name='type', meta='meta')
-        type2 = Type(name='type', meta='meta')
-        type3 = Type(name='type', meta='meta')
-
-        self.assertFalse(type1 is type2)
-        self.assertFalse(type2 is type3)
-        self.assertFalse(type1 is type3)
-
         self.assertEqual(type1, type2)
         self.assertEqual(type2, type3)
         self.assertEqual(type1, type3)
 
-    def test_equals_consistent(self):
+    @given(st.data())
+    def test_equals_consistent(self, data):
         """Test that repeated equals calls return the same value."""
-        type1 = Type(name='type', meta='meta')
-        type2 = Type(name='type', meta='meta')
-        another_type = Type(name='another_type', meta='meta')
+        d = data.draw(distinct_types())
+        type1 = d['type1']
+        another_type = d['another_type']
 
-        self.assertFalse(type1 is type2)
+        type2 = Type(type1.name, type1.meta)
 
         self.assertEqual(type1, type2)
         self.assertEqual(type1, type2)
         self.assertEqual(type1, type2)
 
-        self.assertFalse(type1 is another_type)
-
         self.assertNotEqual(type1, another_type)
         self.assertNotEqual(type1, another_type)
         self.assertNotEqual(type1, another_type)
 
-    def test_hash_consistent(self):
+    @given(types())
+    def test_hash_consistent(self, type1):
         """Test that repeated hash calls yield the same value."""
-        type1 = Type(name='type', meta='meta')
         hash1 = hash(type1)
 
         self.assertEqual(hash1, hash(type1))
         self.assertEqual(hash1, hash(type1))
         self.assertEqual(hash1, hash(type1))
 
-    def test_hash_equals(self):
+    @given(
+        st.shared(types(), key='a'),
+        st.shared(types(), key='a').map(lambda t: Type(t.name, t.meta))
+    )
+    def test_hash_equals(self, type1, type2):
         """Test that when two objects are equal their hashes are equal."""
-        type1 = Type(name='type', meta='meta')
-        type2 = Type(name='type', meta='meta')
-
-        self.assertFalse(type1 is type2)
-
         self.assertEqual(hash(type1), hash(type2))
         self.assertEqual(type1, type2)
 
-    def test_type_pickle(self):
+    @given(types())
+    def test_type_pickle(self, type1):
         """Test that a Type instance can be pickled and unpickled using the
         default protocol.
 
         """
-        type1 = Type(name='one', meta='meta')
-
         pickled_type = pickle.dumps(type1)
         unpickled_type = pickle.loads(pickled_type)
 
         self.assertEqual(type1, unpickled_type)
 
-    def test_type_contains__returns_True_when_types_equal(self):
+    @given(
+        st.shared(types(), key='a'),
+        st.shared(types(), key='a').map(lambda t: Type(t.name, t.meta))
+    )
+    def test_type_contains__returns_True_when_types_equal(self, type1, type2):
         """Test that a Type contains another Type when the Types are equal."""
-        type1 = Type(name='one', meta='meta')
-        type2 = Type(name='one', meta='meta')
-
         self.assertEqual(type1, type2)
         self.assertIn(type1, type2)
         self.assertIn(type2, type1)
 
-    def test_type_contains__returns_False_when_types_not_equal(self):
+    @given(st.data())
+    def test_type_contains__returns_False_when_types_not_equal(self, data):
         """Test that a Type does not contain another Type when the Types are
         not equal.
 
         """
-        type1 = Type(name='one', meta='meta')
-        type2 = Type(name='two', meta='meta')
+        d = data.draw(distinct_types())
+        type1 = d['type1']
+        another_type = d['another_type']
 
-        self.assertNotEqual(type1, type2)
-        self.assertNotIn(type1, type2)
-        self.assertNotIn(type2, type1)
+        self.assertNotEqual(type1, another_type)
+        self.assertNotIn(type1, another_type)
+        self.assertNotIn(another_type, type1)
 
-    def test_type_contains__returns_False_when_ParametrizedType(self):
+    @given(parametrized_types(), types())
+    def test_type_contains__returns_False_when_ParametrizedType(
+        self, ptype1, type1
+    ):
         """Test that a Type does not contain a ParametrizedType."""
-        plain_type = Type(name='one', meta='meta')
-        parametrized_type = ParametrizedType(
-            name='parametrized',
-            base_type=plain_type,
-            parameter_types=(plain_type,),
-            meta='meta'
-        )
+        self.assertNotIn(ptype1, type1)
 
-        self.assertNotIn(parametrized_type, plain_type)
-
-    def test_type_contains__returns_False_when_GenericType(self):
+    @given(generic_types(), types())
+    def test_type_contains__returns_False_when_GenericType(self, gtype1, type1):
         """Test that a Type does not contain a GenericType."""
-        plain_type = Type(name='one', meta='meta')
-        generic_type = GenericType(
-            name='generic', contained_types=(plain_type,), meta='meta'
-        )
+        self.assertNotIn(gtype1, type1)
 
-        self.assertNotIn(generic_type, plain_type)
-
-    def test_type_contains__raises_TypeError(self):
+    @given(
+        types(),
+        st.text() | st.integers() | st.none() | st.booleans() | st.floats()
+    )
+    def test_type_contains__raises_TypeError(self, type1, junk):
         """Test that a Type does not implement __contains__ for arbitrary
         candidates.
 
         """
-        plain_type = Type(name='one', meta='meta')
-
-        self.assertRaises(TypeError, plain_type.__contains__, (int,))
+        self.assertRaises(TypeError, type1.__contains__, (junk,))
 
 
 class TestParametrizedType(unittest.TestCase):
 
-    def test_equals_reflexive(self):
+    @given(
+        st.shared(parametrized_types(), key='a'),
+        st.shared(parametrized_types(), key='a')
+    )
+    def test_equals_reflexive(self, ptype1, ptype2):
         """Test that an object equals itself."""
-        plain_type = Type(name='one', meta='meta')
-        parametrized_type_1 = ParametrizedType(
-            name='ParametrizedType',
-            base_type=plain_type,
-            parameter_types=(plain_type,),
-            meta='meta'
-        )
-        parametrized_type_2 = parametrized_type_1
+        self.assertIs(ptype1, ptype2)
+        self.assertEqual(ptype1, ptype2)
 
-        self.assertIs(parametrized_type_1, parametrized_type_2)
-        self.assertEqual(parametrized_type_1, parametrized_type_2)
-
-    def test_equals_symmetric(self):
+    @given(st.data())
+    def test_equals_symmetric(self, data):
         """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
-        plain_type = Type(name='one', meta='meta')
-        parametrized_type_1 = ParametrizedType(
-            name='ParametrizedType',
-            base_type=plain_type,
-            parameter_types=(plain_type,),
-            meta='meta'
-        )
-        parametrized_type_2 = ParametrizedType(
-            name='ParametrizedType',
-            base_type=plain_type,
-            parameter_types=(plain_type,),
-            meta='meta'
-        )
-        another_parametrized_type = ParametrizedType(
-            name='AnotherParametrizedType',
-            base_type=plain_type,
-            parameter_types=(plain_type,),
-            meta='meta'
+        d = data.draw(distinct_parametrized_types())
+        ptype1 = d['type1']
+        another_ptype = d['another_type']
+
+        ptype2 = ParametrizedType(
+            name=ptype1.name,
+            meta=ptype1.meta,
+            base_type=ptype1.base_type,
+            parameter_types=ptype1.parameter_types
         )
 
-        self.assertFalse(parametrized_type_1 is parametrized_type_2)
+        self.assertEqual(ptype1, ptype2)
+        self.assertEqual(ptype2, ptype1)
 
-        self.assertEqual(parametrized_type_1, parametrized_type_2)
-        self.assertEqual(parametrized_type_2, parametrized_type_1)
+        self.assertNotEqual(ptype1, another_ptype)
+        self.assertNotEqual(another_ptype, ptype1)
 
-        self.assertFalse(parametrized_type_1 is another_parametrized_type)
-
-        self.assertNotEqual(parametrized_type_1, another_parametrized_type)
-        self.assertNotEqual(another_parametrized_type, parametrized_type_1)
-
-    def test_equals_transitive(self):
+    @given(
+        st.shared(parametrized_types(), key='a'),
+        st.shared(parametrized_types(), key='a').map(lambda t: ParametrizedType(
+            name=t.name,
+            meta=t.meta,
+            base_type=t.base_type,
+            parameter_types=t.parameter_types
+        )),
+        st.shared(parametrized_types(), key='a').map(lambda t: ParametrizedType(
+            name=t.name,
+            meta=t.meta,
+            base_type=t.base_type,
+            parameter_types=t.parameter_types
+        ))
+    )
+    def test_equals_transitive(self, ptype1, ptype2, ptype3):
         """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
-        plain_type = Type(name='one', meta='meta')
-        parametrized_type_1 = ParametrizedType(
-            name='ParametrizedType',
-            base_type=plain_type,
-            parameter_types=(plain_type,),
-            meta='meta'
-        )
-        parametrized_type_2 = ParametrizedType(
-            name='ParametrizedType',
-            base_type=plain_type,
-            parameter_types=(plain_type,),
-            meta='meta'
-        )
-        parametrized_type_3 = ParametrizedType(
-            name='ParametrizedType',
-            base_type=plain_type,
-            parameter_types=(plain_type,),
-            meta='meta'
-        )
+        self.assertEqual(ptype1, ptype2)
+        self.assertEqual(ptype2, ptype3)
+        self.assertEqual(ptype1, ptype3)
 
-        self.assertFalse(parametrized_type_1 is parametrized_type_2)
-        self.assertFalse(parametrized_type_2 is parametrized_type_3)
-        self.assertFalse(parametrized_type_1 is parametrized_type_3)
-
-        self.assertEqual(parametrized_type_1, parametrized_type_2)
-        self.assertEqual(parametrized_type_2, parametrized_type_3)
-        self.assertEqual(parametrized_type_1, parametrized_type_3)
-
-    def test_equals_consistent(self):
+    @given(st.data())
+    def test_equals_consistent(self, data):
         """Test that repeated equals calls return the same value."""
-        plain_type = Type(name='one', meta='meta')
-        parametrized_type_1 = ParametrizedType(
-            name='ParametrizedType',
-            base_type=plain_type,
-            parameter_types=(plain_type,),
-            meta='meta'
-        )
-        parametrized_type_2 = ParametrizedType(
-            name='ParametrizedType',
-            base_type=plain_type,
-            parameter_types=(plain_type,),
-            meta='meta'
-        )
-        another_parametrized_type = ParametrizedType(
-            name='AnotherParametrizedType',
-            base_type=plain_type,
-            parameter_types=(plain_type,),
-            meta='meta'
+        d = data.draw(distinct_parametrized_types())
+        ptype1 = d['type1']
+        another_ptype = d['another_type']
+
+        ptype2 = ParametrizedType(
+            name=ptype1.name,
+            meta=ptype1.meta,
+            base_type=ptype1.base_type,
+            parameter_types=ptype1.parameter_types
         )
 
-        self.assertFalse(parametrized_type_1 is parametrized_type_2)
+        self.assertEqual(ptype1, ptype2)
+        self.assertEqual(ptype1, ptype2)
+        self.assertEqual(ptype1, ptype2)
 
-        self.assertEqual(parametrized_type_1, parametrized_type_2)
-        self.assertEqual(parametrized_type_1, parametrized_type_2)
-        self.assertEqual(parametrized_type_1, parametrized_type_2)
+        self.assertNotEqual(ptype1, another_ptype)
+        self.assertNotEqual(ptype1, another_ptype)
+        self.assertNotEqual(ptype1, another_ptype)
 
-        self.assertFalse(parametrized_type_1 is another_parametrized_type)
-
-        self.assertNotEqual(parametrized_type_1, another_parametrized_type)
-        self.assertNotEqual(parametrized_type_1, another_parametrized_type)
-        self.assertNotEqual(parametrized_type_1, another_parametrized_type)
-
-    def test_hash_consistent(self):
+    @given(parametrized_types())
+    def test_hash_consistent(self, ptype1):
         """Test that repeated hash calls yield the same value."""
-        plain_type = Type(name='one', meta='meta')
-        parametrized_type_1 = ParametrizedType(
-            name='ParametrizedType',
-            base_type=plain_type,
-            parameter_types=(plain_type,),
-            meta='meta'
-        )
-        hash1 = hash(parametrized_type_1)
+        hash1 = hash(ptype1)
 
-        self.assertEqual(hash1, hash(parametrized_type_1))
-        self.assertEqual(hash1, hash(parametrized_type_1))
-        self.assertEqual(hash1, hash(parametrized_type_1))
+        self.assertEqual(hash1, hash(ptype1))
+        self.assertEqual(hash1, hash(ptype1))
+        self.assertEqual(hash1, hash(ptype1))
 
-    def test_hash_equals(self):
+    @given(
+        st.shared(parametrized_types(), key='a'),
+        st.shared(parametrized_types(), key='a').map(lambda t: ParametrizedType(
+            name=t.name,
+            meta=t.meta,
+            base_type=t.base_type,
+            parameter_types=t.parameter_types
+        ))
+    )
+    def test_hash_equals(self, ptype1, ptype2):
         """Test that when two objects are equal their hashes are equal."""
-        plain_type = Type(name='one', meta='meta')
-        parametrized_type_1 = ParametrizedType(
-            name='ParametrizedType',
-            base_type=plain_type,
-            parameter_types=(plain_type,),
-            meta='meta'
-        )
-        parametrized_type_2 = ParametrizedType(
-            name='ParametrizedType',
-            base_type=plain_type,
-            parameter_types=(plain_type,),
-            meta='meta'
-        )
+        self.assertEqual(ptype1, ptype2)
+        self.assertEqual(hash(ptype1), hash(ptype2))
 
-        self.assertEqual(parametrized_type_1, parametrized_type_2)
-        self.assertEqual(hash(parametrized_type_1), hash(parametrized_type_2))
-
-    def test_parametrized_type_pickle(self):
+    @given(parametrized_types())
+    def test_parametrized_type_pickle(self, ptype1):
         """Test that a ParametrizedType instance can be pickled and unpickled
         using the default protocol.
 
         """
-        plain_type = Type(name='one', meta='meta')
-        parametrized_type = ParametrizedType(
-            name='ParametrizedType1',
-            base_type=plain_type,
-            parameter_types=(plain_type,),
-            meta='meta'
-        )
-
-        pickled_parametrized_type = pickle.dumps(parametrized_type)
+        pickled_parametrized_type = pickle.dumps(ptype1)
         unpickled_parametrized_type = pickle.loads(pickled_parametrized_type)
 
-        self.assertEqual(parametrized_type, unpickled_parametrized_type)
+        self.assertEqual(ptype1, unpickled_parametrized_type)
 
-    def test_parametrized_type_contains_when_equal(self):
+    @given(
+        st.shared(parametrized_types(), key='a'),
+        st.shared(parametrized_types(), key='a').map(lambda t: ParametrizedType(
+            name=t.name,
+            meta=t.meta,
+            base_type=t.base_type,
+            parameter_types=t.parameter_types
+        ))
+    )
+    def test_parametrized_type_contains_when_equal(self, ptype1, ptype2):
         """Test that a ParametrizedType contains another ParametrizedType when
         the two types are equal.
 
         """
-        plain_type = Type(name='one', meta='meta')
-        parametrized_type_1 = ParametrizedType(
-            name='ParametrizedType',
-            base_type=plain_type,
-            parameter_types=(plain_type,),
-            meta='meta'
-        )
-        parametrized_type_2 = ParametrizedType(
-            name='ParametrizedType',
-            base_type=plain_type,
-            parameter_types=(plain_type,),
-            meta='meta'
-        )
+        self.assertEqual(ptype1, ptype2)
+        self.assertIn(ptype1, ptype2)
+        self.assertIn(ptype2, ptype1)
 
-        self.assertEqual(parametrized_type_1, parametrized_type_2)
-        self.assertIn(parametrized_type_1, parametrized_type_2)
-        self.assertIn(parametrized_type_2, parametrized_type_1)
-
-    def test_parametrized_type_not_contains_when_len_parameters_ne(self):
+    @given(st.data())
+    def test_parametrized_type_not_contains_when_ptypes_ne(self, data):
         """Test that a ParametrizedType does not contain another
-        ParametrizedType *candidate* when the number of *candidate's*
-        parameters does not equal the number of *self's* parameters.
+        ParametrizedType *candidate* when the two parametrized types are
+        unequal.
 
         """
-        base_type_1 = Type(name='base', meta='base')
-        base_type_2 = Type(name='base', meta='base')
+        d = data.draw(distinct_parametrized_types())
+        ptype1 = d['type1']
+        another_ptype = d['another_type']
 
-        self.assertEqual(base_type_1, base_type_2)
-
-        parameter_type_1 = Type(name='parameter1', meta='meta')
-        parameter_type_2 = Type(name='parameter2', meta='meta')
-        parametrized_type_1 = ParametrizedType(
-            name='ParametrizedType1',
-            base_type=base_type_1,
-            parameter_types=(parameter_type_1,),
-            meta='meta'
-        )
-        parametrized_type_2 = ParametrizedType(
-            name='ParametrizedType2',
-            base_type=base_type_2,
-            parameter_types=(parameter_type_1, parameter_type_2),
-            meta='meta'
-        )
-
-        self.assertNotIn(parametrized_type_1, parametrized_type_2)
-        self.assertNotIn(parametrized_type_2, parametrized_type_1)
+        self.assertNotIn(ptype1, another_ptype)
+        self.assertNotIn(another_ptype, ptype1)
 
     def test_parametrized_type_contains_when_all_parameter_types_in_1(self):
         """Test that a ParametrizedType contains another ParametrizedType
@@ -702,249 +621,163 @@ class TestParametrizedType(unittest.TestCase):
             collection_of_strings_type, collection_of_numbers_type
         )
 
-    def test_parametrized_type_does_not_contain_Type(self):
+    @given(types(), parametrized_types())
+    def test_parametrized_type_does_not_contain_Type(self, type1, ptype1):
         """Test that a ParametrizedType does not contain a Type"""
-        base_type = Type(name='BaseType', meta='meta')
-        parameter_type = Type(name='ParameterType', meta='meta')
-        parametrized_type = ParametrizedType(
-            name='ParametrizedType',
-            base_type=base_type,
-            parameter_types=(parameter_type,),
-            meta='meta'
-        )
+        self.assertNotIn(type1, ptype1)
 
-        self.assertNotIn(base_type, parametrized_type)
-        self.assertNotIn(parameter_type, parametrized_type)
-
-    def test_parametrized_type_does_not_contain_GenericType(self):
+    @given(generic_types(), parametrized_types())
+    def test_parametrized_type_does_not_contain_GenericType(
+        self, gtype1, ptype1
+    ):
         """Test that a ParametrizedType does not contain a GenericType"""
-        base_type = Type(name='BaseType', meta='meta')
-        parameter_type = GenericType(
-            name='ParameterType',
-            contained_types=frozenset((base_type,)),
-            meta='meta'
-        )
-        parametrized_type = ParametrizedType(
-            name='ParametrizedType',
-            base_type=base_type,
-            parameter_types=(parameter_type,),
-            meta='meta'
-        )
+        self.assertNotIn(gtype1, ptype1)
 
-        self.assertNotIn(base_type, parametrized_type)
-        self.assertNotIn(parameter_type, parametrized_type)
-
-    def test_parametrized_type_contains_raises_TypeError(self):
+    @given(
+        parametrized_types(),
+        st.text() | st.integers() | st.none() | st.booleans() | st.floats()
+    )
+    def test_parametrized_type_contains_raises_TypeError(self, ptype1, junk):
         """Test that a ParametrizedType does not implement __contains__ for
         arbitrary candidates.
 
         """
-        base_type = Type(name='BaseType', meta='meta')
-        parameter_type = Type(name='ParameterType', meta='meta')
-        parametrized_type = ParametrizedType(
-            name='ParametrizedType',
-            base_type=base_type,
-            parameter_types=(parameter_type,),
-            meta='meta'
-        )
-
-        self.assertRaises(TypeError, parametrized_type.__contains__, type)
+        self.assertRaises(TypeError, ptype1.__contains__, junk)
 
 
 class TestGenericType(unittest.TestCase):
 
-    def test_equals_reflexive(self):
+    @given(
+        st.shared(generic_types(), key='a'),
+        st.shared(generic_types(), key='a')
+    )
+    def test_equals_reflexive(self, gtype1, gtype2):
         """Test that an object equals itself."""
-        type1 = Type(name='one', meta='meta')
-        generic_type_1 = GenericType(
-            name='GenericType',
-            contained_types=frozenset((type1,)),
-            meta='meta'
-        )
-        generic_type_2 = generic_type_1
+        self.assertIs(gtype1, gtype2)
+        self.assertEqual(gtype1, gtype2)
 
-        self.assertIs(generic_type_1, generic_type_2)
-        self.assertEqual(generic_type_1, generic_type_2)
-
-    def test_equals_symmetric(self):
+    @given(st.data())
+    def test_equals_symmetric(self, data):
         """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
-        type1 = Type(name='one', meta='meta')
-        generic_type_1 = GenericType(
-            name='GenericType',
-            contained_types=frozenset((type1,)),
-            meta='meta'
-        )
-        generic_type_2 = GenericType(
-            name='GenericType',
-            contained_types=frozenset((type1,)),
-            meta='meta'
-        )
-        another_generic_type = GenericType(
-            name='AnotherGenericType',
-            contained_types=frozenset((type1,)),
-            meta='meta'
+        d = data.draw(distinct_generic_types())
+        gtype1 = d['type1']
+        another_gtype = d['another_type']
+
+        gtype2 = GenericType(
+            name=gtype1.name,
+            meta=gtype1.meta,
+            contained_types=gtype1.contained_types
         )
 
-        self.assertFalse(generic_type_1 is generic_type_2)
+        self.assertEqual(gtype1, gtype2)
+        self.assertEqual(gtype2, gtype1)
 
-        self.assertEqual(generic_type_1, generic_type_2)
-        self.assertEqual(generic_type_2, generic_type_1)
+        self.assertNotEqual(gtype1, another_gtype)
+        self.assertNotEqual(another_gtype, gtype1)
 
-        self.assertFalse(generic_type_1 is another_generic_type)
-
-        self.assertNotEqual(generic_type_1, another_generic_type)
-        self.assertNotEqual(another_generic_type, generic_type_1)
-
-    def test_equals_transitive(self):
+    @given(
+        st.shared(generic_types(), key='a'),
+        st.shared(generic_types(), key='a').map(lambda t: GenericType(
+            name=t.name,
+            meta=t.meta,
+            contained_types=t.contained_types
+        )),
+        st.shared(generic_types(), key='a').map(lambda t: GenericType(
+            name=t.name,
+            meta=t.meta,
+            contained_types=t.contained_types
+        ))
+    )
+    def test_equals_transitive(self, gtype1, gtype2, gtype3):
         """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
-        type1 = Type(name='one', meta='meta')
-        generic_type_1 = GenericType(
-            name='GenericType',
-            contained_types=frozenset((type1,)),
-            meta='meta'
-        )
-        generic_type_2 = GenericType(
-            name='GenericType',
-            contained_types=frozenset((type1,)),
-            meta='meta'
-        )
-        generic_type_3 = GenericType(
-            name='GenericType',
-            contained_types=frozenset((type1,)),
-            meta='meta'
-        )
+        self.assertEqual(gtype1, gtype2)
+        self.assertEqual(gtype2, gtype3)
+        self.assertEqual(gtype1, gtype3)
 
-        self.assertFalse(generic_type_1 is generic_type_2)
-        self.assertFalse(generic_type_2 is generic_type_3)
-        self.assertFalse(generic_type_1 is generic_type_3)
-
-        self.assertEqual(generic_type_1, generic_type_2)
-        self.assertEqual(generic_type_2, generic_type_3)
-        self.assertEqual(generic_type_1, generic_type_3)
-
-    def test_equals_consistent(self):
+    @given(st.data())
+    def test_equals_consistent(self, data):
         """Test that repeated equals calls return the same value."""
-        type1 = Type(name='one', meta='meta')
-        generic_type_1 = GenericType(
-            name='GenericType',
-            contained_types=frozenset((type1,)),
-            meta='meta'
-        )
-        generic_type_2 = GenericType(
-            name='GenericType',
-            contained_types=frozenset((type1,)),
-            meta='meta'
-        )
-        another_generic_type = GenericType(
-            name='AnotherGenericType',
-            contained_types=frozenset((type1,)),
-            meta='meta'
+        d = data.draw(distinct_generic_types())
+        gtype1 = d['type1']
+        another_gtype = d['another_type']
+
+        gtype2 = GenericType(
+            name=gtype1.name,
+            meta=gtype1.meta,
+            contained_types=gtype1.contained_types
         )
 
-        self.assertFalse(generic_type_1 is generic_type_2)
+        self.assertEqual(gtype1, gtype2)
+        self.assertEqual(gtype1, gtype2)
+        self.assertEqual(gtype1, gtype2)
 
-        self.assertEqual(generic_type_1, generic_type_2)
-        self.assertEqual(generic_type_1, generic_type_2)
-        self.assertEqual(generic_type_1, generic_type_2)
+        self.assertNotEqual(gtype1, another_gtype)
+        self.assertNotEqual(gtype1, another_gtype)
+        self.assertNotEqual(gtype1, another_gtype)
 
-        self.assertFalse(generic_type_1 is another_generic_type)
-
-        self.assertNotEqual(generic_type_1, another_generic_type)
-        self.assertNotEqual(generic_type_1, another_generic_type)
-        self.assertNotEqual(generic_type_1, another_generic_type)
-
-    def test_hash_consistent(self):
+    @given(generic_types())
+    def test_hash_consistent(self, gtype1):
         """Test that repeated hash calls yield the same value."""
-        type1 = Type(name='one', meta='meta')
-        generic_type_1 = GenericType(
-            name='GenericType',
-            contained_types=frozenset((type1,)),
-            meta='meta'
-        )
-        hash1 = hash(generic_type_1)
+        hash1 = hash(gtype1)
 
-        self.assertEqual(hash1, hash(generic_type_1))
-        self.assertEqual(hash1, hash(generic_type_1))
-        self.assertEqual(hash1, hash(generic_type_1))
+        self.assertEqual(hash1, hash(gtype1))
+        self.assertEqual(hash1, hash(gtype1))
+        self.assertEqual(hash1, hash(gtype1))
 
-    def test_hash_equals(self):
+    @given(
+        st.shared(generic_types(), key='a'),
+        st.shared(generic_types(), key='a').map(lambda t: GenericType(
+            name=t.name,
+            meta=t.meta,
+            contained_types=t.contained_types
+        ))
+    )
+    def test_hash_equals(self, gtype1, gtype2):
         """Test that when two objects are equal their hashes are equal."""
-        type1 = Type(name='one', meta='meta')
-        generic_type_1 = GenericType(
-            name='GenericType',
-            contained_types=frozenset((type1,)),
-            meta='meta'
-        )
-        generic_type_2 = GenericType(
-            name='GenericType',
-            contained_types=frozenset((type1,)),
-            meta='meta'
-        )
+        self.assertEqual(gtype1, gtype2)
+        self.assertEqual(hash(gtype1), hash(gtype2))
 
-        self.assertEqual(generic_type_1, generic_type_2)
-        self.assertEqual(hash(generic_type_1), hash(generic_type_2))
-
-    def test_generic_type_pickle(self):
+    @given(parametrized_types())
+    def test_generic_type_pickle(self, gtype1):
         """Test that a GenericType instance can be pickled and unpickled using
         the default protocol.
 
         """
-        type1 = Type(name='one', meta='meta')
-        generic_type = GenericType(
-            name='GenericType',
-            contained_types=frozenset((type1,)),
-            meta='meta'
-        )
-
-        pickled_generic_type = pickle.dumps(generic_type)
+        pickled_generic_type = pickle.dumps(gtype1)
         unpickled_generic_type = pickle.loads(pickled_generic_type)
 
-        self.assertEqual(generic_type, unpickled_generic_type)
+        self.assertEqual(gtype1, unpickled_generic_type)
 
-    def test_generic_type_contains_equal_generic_type(self):
+    @given(
+        st.shared(generic_types(), key='a'),
+        st.shared(generic_types(), key='a').map(lambda t: GenericType(
+            name=t.name,
+            meta=t.meta,
+            contained_types=t.contained_types
+        ))
+    )
+    def test_generic_type_contains_equal_generic_type(self, gtype1, gtype2):
         """Test that a GenericType contains another GenericType if the two
         GenericTypes are equal.
 
         """
-        type1 = Type(name='one', meta='meta')
-        generic_type_1 = GenericType(
-            name='GenericType',
-            contained_types=frozenset((type1,)),
-            meta='meta'
-        )
-        generic_type_2 = GenericType(
-            name='GenericType',
-            contained_types=frozenset((type1,)),
-            meta='meta'
-        )
+        self.assertEqual(gtype1, gtype2)
+        self.assertEqual(gtype2, gtype1)
+        self.assertIn(gtype1, gtype2)
+        self.assertIn(gtype1, gtype2)
 
-        self.assertEqual(generic_type_1, generic_type_2)
-        self.assertEqual(generic_type_2, generic_type_1)
-        self.assertIn(generic_type_1, generic_type_2)
-        self.assertIn(generic_type_2, generic_type_1)
-
-    def test_generic_type_not_contains_unequal_generic_type(self):
+    @given(st.data())
+    def test_generic_type_not_contains_unequal_generic_type(self, data):
         """Test that a GenericType does not contain another GenericType if the
         two GenericTypes are unequal.
 
         """
-        type1 = Type(name='one', meta='meta')
-        type2 = Type(name='two', meta='meta')
-        generic_type_1 = GenericType(
-            name='GenericType1',
-            contained_types=frozenset((type1,)),
-            meta='meta'
-        )
-        generic_type_2 = GenericType(
-            name='GenericType2',
-            contained_types=frozenset((type2,)),
-            meta='meta'
-        )
+        d = data.draw(distinct_generic_types())
+        gtype1 = d['type1']
+        another_gtype = d['another_type']
 
-        self.assertNotEqual(generic_type_1, generic_type_2)
-        self.assertNotEqual(generic_type_2, generic_type_1)
-        self.assertNotIn(generic_type_1, generic_type_2)
-        self.assertNotIn(generic_type_2, generic_type_1)
+        self.assertNotIn(gtype1, another_gtype)
+        self.assertNotIn(another_gtype, gtype1)
 
     def test_generic_type_contains_Type(self):
         """Test that a GenericType contains a Type when the Type is contained
@@ -1129,27 +962,3 @@ class TestGenericType(unittest.TestCase):
 
         self.assertNotIn(generic_type_1, generic_type_2)
         self.assertNotIn(generic_type_2, generic_type_1)
-
-    def test_generic_type_contains_other_when_other_equals_self(self):
-        """Test that a GenericType contains another GenericType when the two
-        generics are equal.
-
-        """
-        hail_satan = Type(name='666', meta='meta')
-
-        generic_type_1 = GenericType(
-            name='GenericType',
-            contained_types=frozenset((hail_satan,)),
-            meta='rull meta'
-        )
-        generic_type_2 = GenericType(
-            name='GenericType',
-            contained_types=frozenset((hail_satan,)),
-            meta='rull meta'
-        )
-
-        self.assertEqual(generic_type_1, generic_type_2)
-        self.assertEqual(generic_type_2, generic_type_1)
-
-        self.assertIn(generic_type_1, generic_type_2)
-        self.assertIn(generic_type_2, generic_type_1)

@@ -52,9 +52,11 @@ setup(
         'Programming Language :: Python :: Implementation :: CPython',
         'Topic :: Scientific/Engineering',
         'Topic :: Software Development :: Libraries',
+        'Topic :: Scientific/Engineering :: Artificial Intelligence',
+        'Topic :: Scientific/Engineering :: Artificial Life'
     ),
     install_requires=REQUIREMENTS,
     tests_require=REQUIREMENTS_TEST,
-    test_suite='nose.collector',
+    setup_requires=['pytest-runner==2.10.1'],
     zip_safe=False
 )

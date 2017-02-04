@@ -105,7 +105,10 @@ class Type(object):
         return self._hash
 
     def __eq__(self, other):
-        return self.name == other.name and self.meta == other.meta
+        if isinstance(other, Type):
+            return self.name == other.name and self.meta == other.meta
+        else:
+            return False
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -168,12 +171,12 @@ class ParametrizedType(object):
         :param parameter_types:
             The parameters of this generic.
 
+        :type parameter_types: tuple[ParametrizedType|GenericType|Type]
+
         :param meta:
             Some (optional) metadata to associate with this type.
 
         :type meta: object
-
-        :type parameter_types: tuple[ParametrizedType|GenericType|Type]
 
         """
         obj = super(ParametrizedType, cls).__new__(cls)
@@ -205,12 +208,15 @@ class ParametrizedType(object):
         return self._hash
 
     def __eq__(self, other):
-        return (
-            self.name == other.name and
-            self.base_type == other.base_type and
-            self.parameter_types == other.parameter_types and
-            self.meta == other.meta
-        )
+        if isinstance(other, ParametrizedType):
+            return (
+                self.name == other.name and
+                self.base_type == other.base_type and
+                self.parameter_types == other.parameter_types and
+                self.meta == other.meta
+            )
+        else:
+            return False
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -314,11 +320,14 @@ class GenericType(object):
         return self._hash
 
     def __eq__(self, other):
-        return (
-            self.name == other.name and
-            self.contained_types == other.contained_types and
-            self.meta == other.meta
-        )
+        if isinstance(other, GenericType):
+            return (
+                self.name == other.name and
+                self.contained_types == other.contained_types and
+                self.meta == other.meta
+            )
+        else:
+            return False
 
     def __ne__(self, other):
         return not self.__eq__(other)

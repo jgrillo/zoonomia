@@ -7,3 +7,5 @@ pypy-venv
 build
 dist
 docs/_build
+.hypothesis
+.cache

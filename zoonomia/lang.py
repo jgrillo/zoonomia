@@ -284,19 +284,17 @@ class OperatorTable(object):
         return not self.__eq__(other)
 
     def union(self, other):
-        """Returns an OperatorSet containing those elements which are members
-        of both this OperatorSet and the other OperatorSet.
+        """Returns an OperatorTable containing those elements which are members
+        of both this OperatorTable and the other OperatorTable.
 
-        :param other: Another OperatorSet.
+        :param other: Another OperatorTable.
         :type other: zoonomia.lang.OperatorTable
 
-        :return: An OperatorSet
-        :rtype: zoonomia.solution.OperatorSet
+        :return: An OperatorTable
+        :rtype: zoonomia.solution.OperatorTable
 
         """
-        return OperatorTable(
-            operators=self.operators.union(other.operators)
-        )
+        return OperatorTable(operators=self.operators.union(other.operators))
 
     def __iter__(self):
         """Returns an iterator over this instance's operators.

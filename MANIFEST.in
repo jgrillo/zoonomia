@@ -2,3 +2,4 @@ include requirements.txt
 include requirements-test.txt
 include README.md
 include LICENSE
+include setup.cfg
