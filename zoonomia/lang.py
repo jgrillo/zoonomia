@@ -53,87 +53,6 @@ class Symbol(object):
         )
 
 
-class Call(object):
-
-    __slots__ = ('target', 'symbol', 'args', 'dtype', 'operator', '_hash')
-
-    def __new__(cls, target, operator, args):
-        """A Call instance represents a function call in an alien execution
-        environment. A Call associates an Operator having a particular type
-        *signature* and a tuple of concrete arguments *args* of the
-        appropriate types with a binding *target* in the execution environment.
-
-        :param target:
-            The symbol to which the results of this call will be bound in the
-            execution environment.
-
-        :type target: Symbol
-
-        :param operator:
-            The Operator corresponding to the underlying function in the
-            execution environment.
-
-        :type operator: Operator
-
-        :param args:
-            A tuple of Symbols corresponding to data in the execution
-            environment representing arguments to the underlying function.
-
-        :type args: tuple[zoonomia.solution.Symbol]
-
-        """
-        obj = super(Call, cls).__new__(cls)
-        obj.target = target
-        obj.dtype = operator.dtype
-        obj.symbol = operator.symbol
-        obj.operator = operator
-        obj.args = args
-        obj._hash = hash(
-            (obj.target, obj.dtype, obj.symbol, obj.operator, obj.args)
-        )
-        return obj
-
-    def __getstate__(self):
-        return (
-            self.target, self.symbol, self.args, self.dtype, self.operator,
-            self._hash
-        )
-
-    def __setstate__(self, state):
-        target, symbol, args, dtype, operator, _hash = state
-
-        self.target = target
-        self.symbol = symbol
-        self.args = args
-        self.dtype = dtype
-        self.operator = operator
-        self._hash = _hash
-
-    def __hash__(self):
-        return self._hash
-
-    def __eq__(self, other):
-        return (
-            self.target == other.target and
-            self.symbol == other.symbol and
-            self.args == other.args and
-            self.dtype == other.dtype and
-            self.operator == other.operator
-        )
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __repr__(self):
-        return (
-            'Call(target={target}, operator={operator}, args={args})'
-        ).format(
-            target=repr(self.target),
-            operator=repr(self.operator),
-            args=repr(self.args)
-        )
-
-
 class Operator(object):
 
     __slots__ = ('symbol', 'signature', 'dtype', '_hash')
@@ -231,6 +150,87 @@ class Operator(object):
             return self.symbol
         else:
             raise TypeError('must specify target if not a terminal operator')
+
+
+class Call(object):
+
+    __slots__ = ('target', 'symbol', 'args', 'dtype', 'operator', '_hash')
+
+    def __new__(cls, target, operator, args):
+        """A Call instance represents a function call in an alien execution
+        environment. A Call associates an Operator having a particular type
+        *signature* and a tuple of concrete arguments *args* of the
+        appropriate types with a binding *target* in the execution environment.
+
+        :param target:
+            The symbol to which the results of this call will be bound in the
+            execution environment.
+
+        :type target: Symbol
+
+        :param operator:
+            The Operator corresponding to the underlying function in the
+            execution environment.
+
+        :type operator: Operator
+
+        :param args:
+            A tuple of Symbols corresponding to data in the execution
+            environment representing arguments to the underlying function.
+
+        :type args: tuple[zoonomia.solution.Symbol]
+
+        """
+        obj = super(Call, cls).__new__(cls)
+        obj.target = target
+        obj.dtype = operator.dtype
+        obj.symbol = operator.symbol
+        obj.operator = operator
+        obj.args = args
+        obj._hash = hash(
+            (obj.target, obj.dtype, obj.symbol, obj.operator, obj.args)
+        )
+        return obj
+
+    def __getstate__(self):
+        return (
+            self.target, self.symbol, self.args, self.dtype, self.operator,
+            self._hash
+        )
+
+    def __setstate__(self, state):
+        target, symbol, args, dtype, operator, _hash = state
+
+        self.target = target
+        self.symbol = symbol
+        self.args = args
+        self.dtype = dtype
+        self.operator = operator
+        self._hash = _hash
+
+    def __hash__(self):
+        return self._hash
+
+    def __eq__(self, other):
+        return (
+            self.target == other.target and
+            self.symbol == other.symbol and
+            self.args == other.args and
+            self.dtype == other.dtype and
+            self.operator == other.operator
+        )
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __repr__(self):
+        return (
+            'Call(target={target}, operator={operator}, args={args})'
+        ).format(
+            target=repr(self.target),
+            operator=repr(self.operator),
+            args=repr(self.args)
+        )
 
 
 class OperatorTable(object):

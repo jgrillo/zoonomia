@@ -1,6 +1,6 @@
 """This module defines builders for `Hypothesis <https://hypothesis.works>`_
-strategies sufficient for constructing :mod:`zoonomia.types` to use in
-Hypothesis tests.
+strategies sufficient for constructing objects found in :mod:`zoonomia.types` to
+use in Hypothesis tests.
 
 """
 
@@ -41,7 +41,7 @@ def meta_types(min_size=1, average_size=5):
     return st.text(min_size=min_size, average_size=average_size)
 
 
-def types(name_ts=name_types(), meta_ts=meta_types()):
+def types(name_ts, meta_ts):
     """Build a :class:`zoonomia.types.Type` strategy.
 
     :param name_ts: A text strategy representing type names.
@@ -57,7 +57,11 @@ def types(name_ts=name_types(), meta_ts=meta_types()):
     return st.builds(Type, **{'name': name_ts, 'meta': meta_ts})
 
 
-def distinct_types(distinct_ts=types()):
+def default_types():
+    return types(name_ts=name_types(), meta_ts=meta_types())
+
+
+def distinct_types(distinct_ts):
     """Build a :class:`zoonomia.types.Type` strategy yielding two types per call
     where the two types are guaranteed to be distinct.
 
@@ -112,9 +116,11 @@ def contained_types(contained_ts, min_size=0, max_size=5):
     )
 
 
-def generic_types(
-    name_ts=name_types(), meta_ts=meta_types(), contained_ts=types()
-):
+def default_contained_types():
+    return contained_types(contained_ts=default_types())
+
+
+def generic_types(name_ts, meta_ts, contained_ts):
     """Build a :class:`zoonomia.types.GenericType` strategy.
 
     :param name_ts: A text strategy representing type names.
@@ -123,7 +129,10 @@ def generic_types(
     :param meta_ts: A text strategy representing type metadata.
     :type meta_ts: hypothesis.strategies.SearchStrategy
 
-    :param contained_ts: A frozensets strategy representing contained types.
+    :param contained_ts:
+        A frozensets strategy representing contained types. This strategy should
+        emit `zoonomia.types.Type` instances.
+
     :type contained_ts: hypothesis.strategies.SearchStrategy
 
     :return: A strategy yielding generic types.
@@ -151,7 +160,15 @@ def generic_types(
     )
 
 
-def distinct_generic_types(generic_ts=generic_types()):
+def default_generic_types():
+    return generic_types(
+        name_ts=name_types(),
+        meta_ts=meta_types(),
+        contained_ts=default_contained_types()
+    )
+
+
+def distinct_generic_types(generic_ts):
     """Build a :class:`zoonomia.types.GenericType` strategy yielding two types
     per call where the two types are guaranteed to be distinct.
 
@@ -173,15 +190,13 @@ def distinct_generic_types(generic_ts=generic_types()):
     ))
 
 
-def parameter_types(
-    parameter_ts=types() | generic_types(), min_size=0, max_size=5
-):
+def parameter_types(parameter_ts, min_size=0, max_size=5):
     """Build a strategy of :class:`zoonomia.types.Type` and
     :class:`zoonomia.types.GenericType` instances which represent parameter
     types for :class:`zoonomia.types.ParametrizedType`.
 
     :param parameter_ts: A parameter types strategy.
-    :types parameter_ts: hypothesis.strategies.SearchStrategy
+    :type parameter_ts: hypothesis.strategies.SearchStrategy
 
     :param min_size: The minimum number of parameter types.
     :type min_size: int
@@ -203,12 +218,20 @@ def parameter_types(
     )
 
 
-def parametrized_types(
-    name_ts=name_types(),
-    meta_ts=meta_types(),
-    base_ts=types() | generic_types(),
-    parameter_ts=parameter_types()
-):
+def default_parameter_types():
+    return parameter_types(
+        parameter_ts=generic_types(
+            name_ts=name_types(),
+            meta_ts=meta_types(),
+            contained_ts=contained_types(
+                contained_ts=types(
+                    name_ts=name_types(), meta_ts=meta_types()
+                )
+            )
+        ) | types(name_ts=name_types(), meta_ts=meta_types()))
+
+
+def parametrized_types(name_ts, meta_ts, base_ts, parameter_ts):
     """Build a strategy of :class:`zoonomia.types.ParametrizedType` instances.
 
     :param name_ts: A text strategy representing type names.
@@ -223,7 +246,10 @@ def parametrized_types(
 
     :type base_ts: hypothesis.strategies.SearchStrategy
 
-    :param parameter_ts: A strategy representing parameter types.
+    :param parameter_ts:
+        A strategy representing parameter types. This strategy should emit
+        `zoonomia.types.GenericType` and `zoonomia.types.Type` instances.
+
     :type base_ts: hypothesis.strategies.SearchStrategy
 
     :return: A strategy of parametrized types.
@@ -253,7 +279,16 @@ def parametrized_types(
     )
 
 
-def distinct_parametrized_types(parametrized_ts=parametrized_types()):
+def default_parametrized_types():
+    return parametrized_types(
+        name_ts=name_types(),
+        meta_ts=meta_types(),
+        base_ts=default_generic_types() | default_types(),
+        parameter_ts=default_parameter_types()
+    )
+
+
+def distinct_parametrized_types(parametrized_ts):
     """Build a :class:`zoonomia.types.ParametrizedType` strategy yielding two
     types per call where the two types are guaranteed to be distinct.
 

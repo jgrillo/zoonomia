@@ -1,6 +1,9 @@
 import unittest
 import pickle
 
+import hypothesis.strategies as st
+
+from hypothesis import given
 from concurrent.futures import ThreadPoolExecutor
 
 from zoonomia.types import Type, GenericType, ParametrizedType
@@ -8,470 +11,293 @@ from zoonomia.lang import (
     Symbol, Call, Operator, OperatorTable
 )
 
+from zoonomia.tests.strategies.lang import (
+    default_symbols, distinct_symbols, default_operators, distinct_operators,
+    default_calls, distinct_calls, default_operator_tables,
+    distinct_operator_tables
+)
+
 
 class TestSymbol(unittest.TestCase):
 
-    def test_equals_reflexive(self):
+    @given(
+        st.shared(default_symbols(), key='test_symbol_equals_reflexive'),
+        st.shared(default_symbols(), key='test_symbol_equals_reflexive')
+    )
+    def test_equals_reflexive(self, symbol1, symbol2):
         """Test that an object equals itself."""
-        symbol1 = Symbol(name='symbol', dtype=Type(name='type'))
-        symbol2 = symbol1
-
         self.assertIs(symbol1, symbol2)
         self.assertEqual(symbol1, symbol2)
 
-    def test_equals_symmetric(self):
+    @given(st.data())
+    def test_equals_symmetric(self, data):
         """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
-        symbol1 = Symbol(name='symbol', dtype=Type(name='name'))
-        symbol2 = Symbol(name='symbol', dtype=Type(name='name'))
-        another_symbol = Symbol(name='another_symbol', dtype=Type(name='name'))
+        d = data.draw(distinct_symbols(symbol_ts=default_symbols()))
+        symbol1 = d['symbol1']
+        another_symbol = d['another_symbol']
 
-        self.assertFalse(symbol1 is symbol2)
+        symbol2 = Symbol(name=symbol1.name, dtype=symbol1.dtype)
 
         self.assertEqual(symbol1, symbol2)
         self.assertEqual(symbol2, symbol1)
 
-        self.assertFalse(symbol1 is another_symbol)
-
         self.assertNotEqual(symbol1, another_symbol)
         self.assertNotEqual(another_symbol, symbol1)
 
-    def test_equals_transitive(self):
+    @given(
+        st.shared(default_symbols(), key='test_symbol_equals_transitive'),
+        st.shared(default_symbols(), key='test_symbol_equals_transitive').map(
+            lambda s: Symbol(name=s.name, dtype=s.dtype)
+        ),
+        st.shared(default_symbols(), key='test_symbol_equals_transitive').map(
+            lambda s: Symbol(name=s.name, dtype=s.dtype)
+        )
+    )
+    def test_equals_transitive(self, symbol1, symbol2, symbol3):
         """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
-        symbol1 = Symbol(name='symbol', dtype=Type(name='type'))
-        symbol2 = Symbol(name='symbol', dtype=Type(name='type'))
-        symbol3 = Symbol(name='symbol', dtype=Type(name='type'))
-
-        self.assertFalse(symbol1 is symbol2)
-        self.assertFalse(symbol2 is symbol3)
-        self.assertFalse(symbol1 is symbol3)
-
         self.assertEqual(symbol1, symbol2)
         self.assertEqual(symbol2, symbol3)
         self.assertEqual(symbol1, symbol3)
 
-    def test_equals_consistent(self):
+    @given(st.data())
+    def test_equals_consistent(self, data):
         """Test that repeated equals calls return the same value."""
-        symbol1 = Symbol(name='symbol', dtype=Type(name='type'))
-        symbol2 = Symbol(name='symbol', dtype=Type(name='type'))
-        another_symbol = Symbol(name='another_symbol', dtype=Type(name='name'))
+        d = data.draw(distinct_symbols(symbol_ts=default_symbols()))
+        symbol1 = d['symbol1']
+        another_symbol = d['another_symbol']
 
-        self.assertFalse(symbol1 is symbol2)
+        symbol2 = Symbol(name=symbol1.name, dtype=symbol1.dtype)
 
         self.assertEqual(symbol1, symbol2)
         self.assertEqual(symbol1, symbol2)
         self.assertEqual(symbol1, symbol2)
 
-        self.assertFalse(symbol1 is another_symbol)
-
         self.assertNotEqual(symbol1, another_symbol)
         self.assertNotEqual(symbol1, another_symbol)
         self.assertNotEqual(symbol1, another_symbol)
 
-    def test_hash_consistent(self):
+    @given(default_symbols())
+    def test_hash_consistent(self, symbol1):
         """Test that repeated hash calls yield the same value."""
-        symbol1 = Symbol(name='symbol', dtype=Type(name='type'))
         hash1 = hash(symbol1)
 
         self.assertEqual(hash1, hash(symbol1))
         self.assertEqual(hash1, hash(symbol1))
         self.assertEqual(hash1, hash(symbol1))
 
-    def test_hash_equals(self):
+    @given(
+        st.shared(default_symbols(), key='test_symbol_hash_equals'),
+        st.shared(default_symbols(), key='test_symbol_hash_equals').map(
+            lambda s: Symbol(name=s.name, dtype=s.dtype)
+        )
+    )
+    def test_hash_equals(self, symbol1, symbol2):
         """Test that when two objects are equal their hashes are equal."""
-        symbol1 = Symbol(name='symbol', dtype=Type(name='type'))
-        symbol2 = Symbol(name='symbol', dtype=Type(name='type'))
-
         self.assertEqual(symbol1, symbol2)
         self.assertEqual(hash(symbol1), hash(symbol2))
 
-    def test_symbol_pickle(self):
+    @given(default_symbols())
+    def test_symbol_pickle(self, symbol1):
         """Test that a Symbol instance can be pickled and unpickled using the
         default protocol.
 
         """
-        symbol = Symbol(name='symbol', dtype=Type(name='type'))
-
-        pickled_symbol = pickle.dumps(symbol)
+        pickled_symbol = pickle.dumps(symbol1)
         unpickled_symbol = pickle.loads(pickled_symbol)
 
-        self.assertEqual(symbol, unpickled_symbol)
+        self.assertEqual(symbol1, unpickled_symbol)
 
 
 class TestCall(unittest.TestCase):
 
-    def test_equals_reflexive(self):
+    @given(
+        st.shared(default_calls(), key='test_call_equals_reflexive'),
+        st.shared(default_calls(), key='test_call_equals_reflexive')
+    )
+    def test_equals_reflexive(self, call1, call2):
         """Test that an object equals itself."""
-        some_type = Type(name='some_type')
-
-        symbol1 = Symbol(name='symbol', dtype=some_type)
-        target1 = Symbol(name='target', dtype=some_type)
-        operator1 = Operator(symbol=symbol1)
-        call1 = Call(
-            target=target1,
-            operator=operator1,
-            args=()
-        )
-        call2 = call1
-
         self.assertIs(call1, call2)
         self.assertEqual(call1, call2)
 
-    def test_equals_symmetric(self):
+    @given(st.data())
+    def test_equals_symmetric(self, data):
         """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
-        some_type = Type(name='some_type')
+        d = data.draw(distinct_calls(call_ts=default_calls()))
+        call1 = d['call1']
+        another_call = d['another_call']
 
-        symbol1 = Symbol(name='symbol', dtype=some_type)
-        target1 = Symbol(name='target', dtype=some_type)
-        operator1 = Operator(symbol=symbol1)
-        call1 = Call(
-            target=target1,
-            operator=operator1,
-            args=()
-        )
-
-        symbol2 = Symbol(name='symbol', dtype=some_type)
-        target2 = Symbol(name='target', dtype=some_type)
-        operator2 = Operator(symbol=symbol2)
         call2 = Call(
-            target=target2,
-            operator=operator2,
-            args=()
+            target=call1.target, operator=call1.operator, args=call1.args
         )
-
-        another_symbol = Symbol(name='another_symbol', dtype=some_type)
-        another_target = Symbol(name='another_target', dtype=some_type)
-        another_operator = Operator(symbol=another_symbol)
-        another_call = Call(
-            target=another_target,
-            operator=another_operator,
-            args=()
-        )
-
-        self.assertFalse(call1 is call2)
 
         self.assertEqual(call1, call2)
         self.assertEqual(call2, call1)
 
-        self.assertFalse(call1 is another_call)
-
         self.assertNotEqual(call1, another_call)
         self.assertNotEqual(another_call, call1)
 
-    def test_equals_transitive(self):
+    @given(
+        st.shared(default_calls(), key='test_call_equals_transitive'),
+        st.shared(default_calls(), key='test_call_equals_transitive').map(
+            lambda c: Call(target=c.target, operator=c.operator, args=c.args)
+        ),
+        st.shared(default_calls(), key='test_call_equals_transitive').map(
+            lambda c: Call(target=c.target, operator=c.operator, args=c.args)
+        )
+    )
+    def test_equals_transitive(self, call1, call2, call3):
         """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
-        some_type = Type(name='some_type')
-
-        symbol1 = Symbol(name='symbol', dtype=some_type)
-        target1 = Symbol(name='target', dtype=some_type)
-        operator1 = Operator(symbol=symbol1)
-        call1 = Call(
-            target=target1,
-            operator=operator1,
-            args=()
-        )
-
-        symbol2 = Symbol(name='symbol', dtype=some_type)
-        target2 = Symbol(name='target', dtype=some_type)
-        operator2 = Operator(symbol=symbol2)
-        call2 = Call(
-            target=target2,
-            operator=operator2,
-            args=()
-        )
-
-        symbol3 = Symbol(name='symbol', dtype=some_type)
-        target3 = Symbol(name='target', dtype=some_type)
-        operator3 = Operator(symbol=symbol3)
-        call3 = Call(
-            target=target3,
-            operator=operator3,
-            args=()
-        )
-
-        self.assertFalse(call1 is call2)
-        self.assertFalse(call2 is call3)
-        self.assertFalse(call1 is call3)
-
         self.assertEqual(call1, call2)
         self.assertEqual(call2, call3)
         self.assertEqual(call1, call3)
 
-    def test_equals_consistent(self):
+    @given(st.data())
+    def test_equals_consistent(self, data):
         """Test that repeated equals calls return the same value."""
-        some_type = Type(name='some_type')
+        d = data.draw(distinct_calls(call_ts=default_calls()))
+        call1 = d['call1']
+        another_call = d['another_call']
 
-        symbol1 = Symbol(name='symbol', dtype=some_type)
-        target1 = Symbol(name='target', dtype=some_type)
-        operator1 = Operator(symbol=symbol1)
-        call1 = Call(
-            target=target1,
-            operator=operator1,
-            args=()
-        )
-
-        symbol2 = Symbol(name='symbol', dtype=some_type)
-        target2 = Symbol(name='target', dtype=some_type)
-        operator2 = Operator(symbol=symbol2)
         call2 = Call(
-            target=target2,
-            operator=operator2,
-            args=()
+            target=call1.target, operator=call1.operator, args=call1.args
         )
 
-        another_symbol = Symbol(name='another_symbol', dtype=some_type)
-        another_target = Symbol(name='another_target', dtype=some_type)
-        another_operator = Operator(symbol=another_symbol)
-        another_call = Call(
-            target=another_target,
-            operator=another_operator,
-            args=()
-        )
-
-        self.assertFalse(call1 is call2)
-
         self.assertEqual(call1, call2)
         self.assertEqual(call1, call2)
         self.assertEqual(call1, call2)
-
-        self.assertFalse(call1 is another_call)
 
         self.assertNotEqual(call1, another_call)
         self.assertNotEqual(call1, another_call)
         self.assertNotEqual(call1, another_call)
 
-    def test_hash_consistent(self):
+    @given(default_calls())
+    def test_hash_consistent(self, call1):
         """Test that repeated hash calls yield the same value."""
-        some_type = Type(name='some_type')
-
-        symbol1 = Symbol(name='symbol', dtype=some_type)
-        target1 = Symbol(name='target', dtype=some_type)
-        operator1 = Operator(symbol=symbol1)
-        call1 = Call(
-            target=target1,
-            operator=operator1,
-            args=()
-        )
-
         hash1 = hash(call1)
 
         self.assertEqual(hash1, hash(call1))
         self.assertEqual(hash1, hash(call1))
         self.assertEqual(hash1, hash(call1))
 
-    def test_hash_equals(self):
+    @given(
+        st.shared(default_calls(), key='test_call_hash_equals'),
+        st.shared(default_calls(), key='test_call_hash_equals').map(
+            lambda c: Call(target=c.target, operator=c.operator, args=c.args)
+        )
+    )
+    def test_hash_equals(self, call1, call2):
         """Test that when two objects are equal their hashes are equal."""
-        some_type = Type(name='some_type')
-
-        symbol1 = Symbol(name='symbol', dtype=some_type)
-        target1 = Symbol(name='target', dtype=some_type)
-        operator1 = Operator(symbol=symbol1)
-        call1 = Call(
-            target=target1,
-            operator=operator1,
-            args=()
-        )
-
-        symbol2 = Symbol(name='symbol', dtype=some_type)
-        target2 = Symbol(name='target', dtype=some_type)
-        operator2 = Operator(symbol=symbol2)
-        call2 = Call(
-            target=target2,
-            operator=operator2,
-            args=()
-        )
-
         self.assertEqual(call1, call2)
         self.assertEqual(hash(call1), hash(call2))
 
-    def test_call_pickle(self):
+    @given(default_calls())
+    def test_call_pickle(self, call1):
         """Test that a Call instance can be pickled and unpickled using the
         default protocol.
 
         """
-        some_type = Type(name='some_type')
-
-        symbol = Symbol(name='symbol', dtype=some_type)
-        operator = Operator(symbol=symbol)
-        call = Call(
-            target=Symbol(name='target', dtype=some_type),
-            operator=operator,
-            args=()
-        )
-
-        pickled_call = pickle.dumps(call)
+        pickled_call = pickle.dumps(call1)
         unpickled_call = pickle.loads(pickled_call)
 
-        self.assertEqual(call, unpickled_call)
+        self.assertEqual(call1, unpickled_call)
 
 
 class TestOperator(unittest.TestCase):
 
-    def test_equals_reflexive(self):
+    @given(
+        st.shared(default_operators(), key='test_operator_equals_reflexive'),
+        st.shared(default_operators(), key='test_operator_equals_reflexive')
+    )
+    def test_equals_reflexive(self, operator1, operator2):
         """Test that an object equals itself."""
-        int_type = Type(name='int')
-        signature = (int_type, int_type)
-        dtype = int_type
+        self.assertIs(operator1, operator2)
+        self.assertEqual(operator1, operator2)
 
-        basis_operator_1 = Operator(
-            symbol=Symbol(name='add', dtype=dtype), signature=signature
-        )
-
-        basis_operator_2 = basis_operator_1
-
-        self.assertIs(basis_operator_1, basis_operator_2)
-        self.assertEqual(basis_operator_1, basis_operator_2)
-
-    def test_equals_symmetric(self):
+    @given(st.data())
+    def test_equals_symmetric(self, data):
         """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
-        int_type = Type(name='int')
-        signature = (int_type, int_type)
-        dtype = int_type
+        d = data.draw(distinct_operators(operator_ts=default_operators()))
+        operator1 = d['operator1']
+        another_operator = d['another_operator']
 
-        basis_operator_1 = Operator(
-            symbol=Symbol(name='add', dtype=dtype), signature=signature
+        operator2 = Operator(
+            symbol=operator1.symbol, signature=operator1.signature
         )
 
-        basis_operator_2 = Operator(
-            symbol=Symbol(name='add', dtype=dtype), signature=signature
+        self.assertEqual(operator1, operator2)
+        self.assertEqual(operator2, operator1)
+
+        self.assertNotEqual(operator1, another_operator)
+        self.assertNotEqual(another_operator, operator1)
+
+    @given(
+        st.shared(default_operators(), key='test_operator_equals_transitive'),
+        st.shared(
+            default_operators(), key='test_operator_equals_transitive'
+        ).map(
+            lambda o: Operator(symbol=o.symbol, signature=o.signature)
+        ),
+        st.shared(
+            default_operators(), key='test_operator_equals_transitive'
+        ).map(
+            lambda o: Operator(symbol=o.symbol, signature=o.signature)
         )
-
-        another_basis_operator = Operator(
-            symbol=Symbol(name='another_add', dtype=dtype), signature=signature
-        )
-
-        self.assertFalse(basis_operator_1 is basis_operator_2)
-
-        self.assertEqual(basis_operator_1, basis_operator_2)
-        self.assertEqual(basis_operator_2, basis_operator_1)
-
-        self.assertFalse(basis_operator_1 is another_basis_operator)
-
-        self.assertNotEqual(basis_operator_1, another_basis_operator)
-        self.assertNotEqual(another_basis_operator, basis_operator_1)
-
-    def test_equals_transitive(self):
+    )
+    def test_equals_transitive(self, operator1, operator2, operator3):
         """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
-        int_type = Type(name='int')
-        signature = (int_type, int_type)
-        dtype = int_type
+        self.assertEqual(operator1, operator2)
+        self.assertEqual(operator2, operator3)
+        self.assertEqual(operator1, operator3)
 
-        basis_operator_1 = Operator(
-            symbol=Symbol(name='add', dtype=dtype), signature=signature
-        )
-
-        basis_operator_2 = Operator(
-            symbol=Symbol(name='add', dtype=dtype), signature=signature
-        )
-
-        basis_operator_3 = Operator(
-            symbol=Symbol(name='add', dtype=dtype), signature=signature
-        )
-
-        self.assertFalse(basis_operator_1 is basis_operator_2)
-        self.assertFalse(basis_operator_2 is basis_operator_3)
-        self.assertFalse(basis_operator_1 is basis_operator_3)
-
-        self.assertEqual(basis_operator_1, basis_operator_2)
-        self.assertEqual(basis_operator_2, basis_operator_3)
-        self.assertEqual(basis_operator_1, basis_operator_3)
-
-    def test_equals_consistent(self):
+    @given(st.data())
+    def test_equals_consistent(self, data):
         """Test that repeated equals calls return the same value."""
-        int_type = Type(name='int')
-        signature = (int_type, int_type)
-        dtype = int_type
+        d = data.draw(distinct_operators(operator_ts=default_operators()))
+        operator1 = d['operator1']
+        another_operator = d['another_operator']
 
-        basis_operator_1 = Operator(
-            symbol=Symbol(name='add', dtype=dtype), signature=signature
+        operator2 = Operator(
+            symbol=operator1.symbol, signature=operator1.signature
         )
 
-        basis_operator_2 = Operator(
-            symbol=Symbol(name='add', dtype=dtype), signature=signature
-        )
+        self.assertEqual(operator1, operator2)
+        self.assertEqual(operator1, operator2)
+        self.assertEqual(operator1, operator2)
 
-        another_basis_operator = Operator(
-            symbol=Symbol(name='another_add', dtype=dtype), signature=signature
-        )
+        self.assertNotEqual(operator1, another_operator)
+        self.assertNotEqual(operator1, another_operator)
+        self.assertNotEqual(operator1, another_operator)
 
-        self.assertFalse(basis_operator_1 is basis_operator_2)
-
-        self.assertEqual(basis_operator_1, basis_operator_2)
-        self.assertEqual(basis_operator_1, basis_operator_2)
-        self.assertEqual(basis_operator_1, basis_operator_2)
-
-        self.assertFalse(basis_operator_1 is another_basis_operator)
-
-        self.assertNotEqual(basis_operator_1, another_basis_operator)
-        self.assertNotEqual(basis_operator_1, another_basis_operator)
-        self.assertNotEqual(basis_operator_1, another_basis_operator)
-
-    def test_hash_consistent(self):
+    @given(default_operators())
+    def test_hash_consistent(self, operator1):
         """Test that repeated hash calls yield the same value."""
-        int_type = Type(name='int')
-        signature = (int_type, int_type)
-        dtype = int_type
+        hash1 = hash(operator1)
 
-        basis_operator_1 = Operator(
-            symbol=Symbol(name='add', dtype=dtype), signature=signature
+        self.assertEqual(hash1, hash(operator1))
+        self.assertEqual(hash1, hash(operator1))
+        self.assertEqual(hash1, hash(operator1))
+
+    @given(
+        st.shared(default_operators(), key='test_operator_hash_equals'),
+        st.shared(default_operators(), key='test_operator_hash_equals').map(
+            lambda o: Operator(symbol=o.symbol, signature=o.signature)
         )
-
-        hash1 = hash(basis_operator_1)
-
-        self.assertEqual(hash1, hash(basis_operator_1))
-        self.assertEqual(hash1, hash(basis_operator_1))
-        self.assertEqual(hash1, hash(basis_operator_1))
-
-    def test_hash_equals(self):
+    )
+    def test_hash_equals(self, operator1, operator2):
         """Test that when two objects are equal their hashes are equal."""
-        int_type = Type(name='int')
-        signature = (int_type, int_type)
-        dtype = int_type
+        self.assertEqual(operator1, operator2)
+        self.assertEqual(hash(operator1), hash(operator2))
 
-        basis_operator_1 = Operator(
-            symbol=Symbol(name='add', dtype=dtype), signature=signature
-        )
-
-        basis_operator_2 = Operator(
-            symbol=Symbol(name='add', dtype=dtype), signature=signature
-        )
-
-        self.assertEqual(basis_operator_1, basis_operator_2)
-        self.assertEqual(hash(basis_operator_1), hash(basis_operator_2))
-
-    def test_basis_operator_attributes(self):
-        """Test that a BasisOperator instance has attributes which are
-        references to the data passed into the initializer.
-
-        """
-        int_type = Type(name='int')
-        signature = (int_type, int_type)
-        dtype = int_type
-
-        basis_operator = Operator(
-            symbol=Symbol(name='add', dtype=dtype), signature=signature
-        )
-
-        self.assertIs(basis_operator.symbol.name, 'add')
-        self.assertIs(basis_operator.signature, signature)
-        self.assertIs(basis_operator.dtype, dtype)
-
-    def test_operator_pickle(self):
+    @given(default_operators())
+    def test_operator_pickle(self, operator1):
         """Test that an Operator inctance can be pickled and unpickled using
         the default protocol.
 
         """
-        int_type = Type(name='int')
-        signature = (int_type, int_type)
-        dtype = int_type
-
-        basis_operator = Operator(
-            symbol=Symbol(name='add', dtype=dtype), signature=signature
-        )
-
-        pickled_operator = pickle.dumps(basis_operator)
+        pickled_operator = pickle.dumps(operator1)
         unpickled_operator = pickle.loads(pickled_operator)
 
-        self.assertEqual(basis_operator, unpickled_operator)
+        self.assertEqual(operator1, unpickled_operator)
 
     def test_operator_call_raises_when_target_present_and_args_absent(self):
         terminal_operator = Operator(
@@ -489,255 +315,119 @@ class TestOperator(unittest.TestCase):
             TypeError, basis_operator, {'args': ('arg',)}
         )
 
-    def test_operator_call_returns_expected_call_object(self):
+    @given(
+        default_symbols(),
+        st.builds(
+            tuple,
+            st.lists(elements=default_operators(), min_size=0, max_size=5)
+        ),
+        default_operators()
+    )
+    def test_operator_call_returns_expected_call_object(
+        self, target1, args1, operator1
+    ):
         """Test that calling a basis operator like a function produces the
         corresponding Call object.
 
         """
-        int_type = Type(name='int')
-        signature = (int_type, int_type)
-        dtype = int_type
-
-        basis_operator = Operator(
-            symbol=Symbol(name='add', dtype=dtype), signature=signature
-        )
-
-        terminal_operator_1 = Operator(
-            symbol=Symbol(name='term_1', dtype=dtype)
-        )
-        terminal_operator_2 = Operator(
-            symbol=Symbol(name='term_2', dtype=dtype)
-        )
-        call = Call(
-            target=terminal_operator_1(),
-            operator=basis_operator,
-            args=(terminal_operator_2,)
-        )
-        target = Symbol(name='target', dtype=dtype)
-
         self.assertEqual(
-            Call(
-                target=target,
-                operator=basis_operator,
-                args=(terminal_operator_2(), call)
-            ),
-            basis_operator(
-                target=target, args=(terminal_operator_2(), call)
-            )
+            Call(target=target1, operator=operator1, args=args1),
+            operator1(target=target1, args=args1)
         )
 
 
 class TestOperatorTable(unittest.TestCase):
 
-    def test_equals_reflexive(self):
+    @given(
+        st.shared(default_operator_tables(), key='test_ot_equals_reflexive'),
+        st.shared(default_operator_tables(), key='test_ot_equals_reflexive')
+    )
+    def test_equals_reflexive(self, table1, table2):
         """Test that an object equals itself."""
-        int_type = Type(name='int')
-        str_type = Type(name='str')
+        self.assertIs(table1, table2)
+        self.assertEqual(table1, table2)
 
-        basis_op_1 = Operator(
-            symbol=Symbol(name='add', dtype=int_type),
-            signature=(int_type, int_type)
-        )
-        basis_op_2 = Operator(
-            symbol=Symbol(name='add', dtype=str_type),
-            signature=(str_type, str_type)
-        )
-
-        terminal_op_1 = Operator(symbol=Symbol(name='term1', dtype=int_type))
-        terminal_op_2 = Operator(symbol=Symbol(name='term2', dtype=str_type))
-
-        operator_table_1 = OperatorTable(
-            operators=(basis_op_1, basis_op_2, terminal_op_1, terminal_op_2)
-        )
-        operator_table_2 = operator_table_1
-
-        self.assertIs(operator_table_1, operator_table_2)
-        self.assertEqual(operator_table_1, operator_table_2)
-
-    def test_equals_symmetric(self):
+    @given(st.data())
+    def test_equals_symmetric(self, data):
         """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
-        int_type = Type(name='int')
-        str_type = Type(name='str')
+        d = data.draw(distinct_operator_tables(
+            operator_tables_ts=default_operator_tables()
+        ))
+        table1 = d['table1']
+        another_table = d['another_table']
 
-        basis_op_1 = Operator(
-            symbol=Symbol(name='add', dtype=int_type),
-            signature=(int_type, int_type)
+        table2 = OperatorTable(operators=table1.operators)
+
+        self.assertEqual(table1, table2)
+        self.assertEqual(table2, table1)
+
+        self.assertNotEqual(table1, another_table)
+        self.assertNotEqual(another_table, table1)
+
+    @given(
+        st.shared(default_operator_tables(), key='test_ot_eq_transitive'),
+        st.shared(default_operator_tables(), key='test_ot_eq_transitive').map(
+            lambda t: OperatorTable(operators=t.operators)
+        ),
+        st.shared(default_operator_tables(), key='test_ot_eq_transitive').map(
+            lambda t: OperatorTable(operators=t.operators)
         )
-        basis_op_2 = Operator(
-            symbol=Symbol(name='add', dtype=str_type),
-            signature=(str_type, str_type)
-        )
-
-        terminal_op_1 = Operator(symbol=Symbol(name='term1', dtype=int_type))
-        terminal_op_2 = Operator(symbol=Symbol(name='term2', dtype=str_type))
-
-        operator_table_1 = OperatorTable(
-            operators=(basis_op_1, basis_op_2, terminal_op_1, terminal_op_2)
-        )
-        operator_table_2 = OperatorTable(
-            operators=(basis_op_1, basis_op_2, terminal_op_1, terminal_op_2)
-        )
-        another_operator_table = OperatorTable(
-            operators=(basis_op_1, terminal_op_1)
-        )
-
-        self.assertFalse(operator_table_1 is operator_table_2)
-
-        self.assertEqual(operator_table_1, operator_table_2)
-        self.assertEqual(operator_table_2, operator_table_1)
-
-        self.assertFalse(operator_table_1 is another_operator_table)
-
-        self.assertNotEqual(operator_table_1, another_operator_table)
-        self.assertNotEqual(another_operator_table, operator_table_1)
-
-    def test_equals_transitive(self):
+    )
+    def test_equals_transitive(self, table1, table2, table3):
         """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
-        int_type = Type(name='int')
-        str_type = Type(name='str')
+        self.assertEqual(table1, table2)
+        self.assertEqual(table2, table3)
+        self.assertEqual(table1, table3)
 
-        basis_op_1 = Operator(
-            symbol=Symbol(name='add', dtype=int_type),
-            signature=(int_type, int_type)
-        )
-        basis_op_2 = Operator(
-            symbol=Symbol(name='add', dtype=str_type),
-            signature=(str_type, str_type)
-        )
-
-        terminal_op_1 = Operator(symbol=Symbol(name='term1', dtype=int_type))
-        terminal_op_2 = Operator(symbol=Symbol(name='term2', dtype=str_type))
-
-        operator_table_1 = OperatorTable(
-            operators=(basis_op_1, basis_op_2, terminal_op_1, terminal_op_2)
-        )
-        operator_table_2 = OperatorTable(
-            operators=(basis_op_1, basis_op_2, terminal_op_1, terminal_op_2)
-        )
-        operator_table_3 = OperatorTable(
-            operators=(basis_op_1, basis_op_2, terminal_op_1, terminal_op_2)
-        )
-
-        self.assertFalse(operator_table_1 is operator_table_2)
-        self.assertFalse(operator_table_2 is operator_table_3)
-        self.assertFalse(operator_table_1 is operator_table_3)
-
-        self.assertEqual(operator_table_1, operator_table_2)
-        self.assertEqual(operator_table_2, operator_table_3)
-        self.assertEqual(operator_table_1, operator_table_3)
-
-    def test_equals_consistent(self):
+    @given(st.data())
+    def test_equals_consistent(self, data):
         """Test that repeated equals calls return the same value."""
-        int_type = Type(name='int')
-        str_type = Type(name='str')
+        d = data.draw(distinct_operator_tables(
+            operator_tables_ts=default_operator_tables()
+        ))
+        table1 = d['table1']
+        another_table = d['another_table']
 
-        basis_op_1 = Operator(
-            symbol=Symbol(name='add', dtype=int_type),
-            signature=(int_type, int_type)
-        )
-        basis_op_2 = Operator(
-            symbol=Symbol(name='add', dtype=str_type),
-            signature=(str_type, str_type)
-        )
+        table2 = OperatorTable(operators=table1.operators)
 
-        terminal_op_1 = Operator(symbol=Symbol(name='term1', dtype=int_type))
-        terminal_op_2 = Operator(symbol=Symbol(name='term2', dtype=str_type))
+        self.assertEqual(table1, table2)
+        self.assertEqual(table1, table2)
+        self.assertEqual(table1, table2)
 
-        operator_table_1 = OperatorTable(
-            operators=(basis_op_1, basis_op_2, terminal_op_1, terminal_op_2)
-        )
-        operator_table_2 = OperatorTable(
-            operators=(basis_op_1, basis_op_2, terminal_op_1, terminal_op_2)
-        )
-        another_operator_table = OperatorTable(
-            operators=(basis_op_1, terminal_op_1)
-        )
+        self.assertNotEqual(table1, another_table)
+        self.assertNotEqual(table1, another_table)
+        self.assertNotEqual(table1, another_table)
 
-        self.assertFalse(operator_table_1 is operator_table_2)
-
-        self.assertEqual(operator_table_1, operator_table_2)
-        self.assertEqual(operator_table_1, operator_table_2)
-        self.assertEqual(operator_table_1, operator_table_2)
-
-        self.assertFalse(operator_table_1 is another_operator_table)
-
-        self.assertNotEqual(operator_table_1, another_operator_table)
-        self.assertNotEqual(operator_table_1, another_operator_table)
-        self.assertNotEqual(operator_table_1, another_operator_table)
-
-    def test_hash_consistent(self):
+    @given(default_operator_tables())
+    def test_hash_consistent(self, table1):
         """Test that repeated hash calls yield the same value."""
-        int_type = Type(name='int')
-        str_type = Type(name='str')
+        hash1 = hash(table1)
 
-        basis_op_1 = Operator(
-            symbol=Symbol(name='add', dtype=int_type),
-            signature=(int_type, int_type)
+        self.assertEqual(hash1, hash(table1))
+        self.assertEqual(hash1, hash(table1))
+        self.assertEqual(hash1, hash(table1))
+
+    @given(
+        st.shared(default_operator_tables(), key='test_ot_hash_equals'),
+        st.shared(default_operator_tables(), key='test_ot_hash_equals').map(
+            lambda t: OperatorTable(operators=t.operators)
         )
-        basis_op_2 = Operator(
-            symbol=Symbol(name='add', dtype=str_type),
-            signature=(str_type, str_type)
-        )
-
-        terminal_op_1 = Operator(symbol=Symbol(name='term1', dtype=int_type))
-        terminal_op_2 = Operator(symbol=Symbol(name='term2', dtype=str_type))
-
-        operator_table_1 = OperatorTable(
-            operators=(basis_op_1, basis_op_2, terminal_op_1, terminal_op_2)
-        )
-        hash1 = hash(operator_table_1)
-
-        self.assertEqual(hash1, hash(operator_table_1))
-        self.assertEqual(hash1, hash(operator_table_1))
-        self.assertEqual(hash1, hash(operator_table_1))
-
-    def test_hash_equals(self):
+    )
+    def test_hash_equals(self, table1, table2):
         """Test that when two objects are equal their hashes are equal."""
-        int_type = Type(name='int')
-        str_type = Type(name='str')
+        self.assertEqual(hash(table1), hash(table2))
+        self.assertEqual(table1, table2)
 
-        basis_op_1 = Operator(
-            symbol=Symbol(name='add', dtype=int_type),
-            signature=(int_type, int_type)
-        )
-        basis_op_2 = Operator(
-            symbol=Symbol(name='add', dtype=str_type),
-            signature=(str_type, str_type)
-        )
-
-        terminal_op_1 = Operator(symbol=Symbol(name='term1', dtype=int_type))
-        terminal_op_2 = Operator(symbol=Symbol(name='term2', dtype=str_type))
-
-        operator_table_1 = OperatorTable(
-            operators=(basis_op_1, basis_op_2, terminal_op_1, terminal_op_2)
-        )
-        operator_table_2 = OperatorTable(
-            operators=(basis_op_1, basis_op_2, terminal_op_1, terminal_op_2)
-        )
-
-        self.assertEqual(hash(operator_table_1), hash(operator_table_2))
-        self.assertEqual(operator_table_1, operator_table_2)
-
-    def test_operator_table_pickle(self):
+    @given(default_operator_tables())
+    def test_operator_table_pickle(self, table1):
         """Test that an OperatorTable instance can be pickled and unpickled using
         the default protocol.
 
         """
-        int_type = Type(name='int')
-        str_type = Type(name='str')
-
-        basis_op = Operator(
-            symbol=Symbol(name='add', dtype=int_type),
-            signature=(int_type, str_type)
-        )
-        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
-
-        operator_table = OperatorTable(operators=(basis_op, terminal_op))
-
-        pickled_operator_table = pickle.dumps(operator_table)
+        pickled_operator_table = pickle.dumps(table1)
         unpickled_operator_table = pickle.loads(pickled_operator_table)
 
-        self.assertEqual(operator_table, unpickled_operator_table)
+        self.assertEqual(table1, unpickled_operator_table)
 
     def test_operator_table_lookup(self):
         """Test that an OperatorTable acts legit wrt lookups by *dtype*."""
@@ -1142,22 +832,12 @@ class TestOperatorTable(unittest.TestCase):
             basis_union_terminal[str_type], {basis_op_2, terminal_op_2}
         )
 
-    def test_operator_table_iter(self):
+    @given(default_operator_tables())
+    def test_operator_table_iter(self, table1):
         """Test that an iterator over an OperatorTable yields the same items as
         an iterator over its *operators* attribute.
 
         """
-        int_type = Type(name='int')
-
-        basis_op_1 = Operator(
-            symbol=Symbol(name='add', dtype=int_type),
-            signature=(int_type, int_type)
-        )
-
-        terminal_op_1 = Operator(symbol=Symbol(name='term1', dtype=int_type))
-
-        operator_table = OperatorTable(operators=(basis_op_1, terminal_op_1))
-
         self.assertItemsEqual(
-            operator_table.operators, iter(operator_table)
+            table1.operators, iter(table1)
         )
