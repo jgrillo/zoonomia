@@ -1,4 +1,3 @@
-import itertools
 import logging
 
 from threading import RLock
@@ -36,6 +35,9 @@ class Objective(object):
 
     def __getstate__(self):
         return self.eval_func, self.weight, self._hash
+
+    def __getnewargs__(self):
+        return self.eval_func, self.weight
 
     def __setstate__(self, state):
         _eval_func, _weight, _hash = state
@@ -103,6 +105,9 @@ class Fitness(object):
 
     def __getstate__(self):
         return self.score, self.objective, self._hash
+
+    def __getnewargs__(self):
+        return self.score, self.objective
 
     def __setstate__(self, state):
         score, objective, _hash = state
@@ -197,6 +202,9 @@ class Solution(object):  # FIXME: should fitnesses be futures?
             self.tree, self.objectives, self.map, self.fitnesses, self._hash
         )
 
+    def __getnewargs__(self):
+        return self.tree, self.objectives, self.map
+
     def __setstate__(self, state):
         tree, objectives, map_, fitnesses, _hash = state
 
@@ -225,7 +233,7 @@ class Solution(object):  # FIXME: should fitnesses be futures?
                         lambda o: o.evaluate(self), self.objectives
                     )
                     ordered_fitnesses = [
-                        None for _ in xrange(len(self.objectives))
+                        None for _ in range(len(self.objectives))
                     ]
 
                     for fitness in fitnesses:
@@ -261,11 +269,10 @@ class Solution(object):  # FIXME: should fitnesses be futures?
         """
         if self.objectives == other.objectives:
             return any(
-                    f1 > f2 for f1, f2 in
-                    itertools.izip(self.evaluate(), other.evaluate())
+                    f1 > f2 for f1, f2 in zip(self.evaluate(), other.evaluate())
             ) and all(
                     f1 >= f2 for f1, f2 in
-                    itertools.izip(self.evaluate(), other.evaluate())
+                    zip(self.evaluate(), other.evaluate())
             )
         else:
             raise TypeError(
@@ -298,7 +305,7 @@ class Solution(object):  # FIXME: should fitnesses be futures?
         if self._hash is None:
             with self._lock:
                 if self._hash is None:
-                    log.warn('Evaluation triggered by hash for %s', self)
+                    log.warning('Evaluation triggered by hash for %s', self)
                     self.evaluate()
 
         return self._hash
@@ -324,7 +331,7 @@ class Solution(object):  # FIXME: should fitnesses be futures?
         if self._hash is None:
             with self._lock:
                 if self._hash is None:
-                    log.warn('Evaluation triggered by __eq__ for %s', self)
+                    log.warning('Evaluation triggered by __eq__ for %s', self)
                     self.evaluate()
 
         return (

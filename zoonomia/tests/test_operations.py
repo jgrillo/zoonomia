@@ -1,7 +1,7 @@
 import unittest
-import mock
 import random
 
+from unittest import mock
 from hypothesis import given
 from hypothesis.strategies import integers, text, builds
 

@@ -265,7 +265,7 @@ def distinct_calls(call_ts):
     ))
 
 
-def operator_tables(operator_ts, min_size=0, max_size=5):
+def operator_tables(operator_ts, min_size=0, max_size=10):
     """Build a :class:`zoonomia.lang.OperatorTable` strategy.
 
     :param operator_ts: An operators strategy.

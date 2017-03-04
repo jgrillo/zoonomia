@@ -1,9 +1,9 @@
 import unittest
 import time
-import mock
 import logging
 import pickle
 
+from unittest import mock
 from concurrent.futures import ThreadPoolExecutor
 from zoonomia.tree import Node, Tree
 from zoonomia.solution import Objective, Fitness, Solution
@@ -13,12 +13,6 @@ from zoonomia.lang import Symbol, Call, Operator, OperatorTable
 logging.basicConfig()
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
-
-POOL = ThreadPoolExecutor(max_workers=100)
-
-
-def futures_map(fn, iterable):
-    return POOL.map(fn, iterable)
 
 
 def eval_func(s):
@@ -359,6 +353,18 @@ class TestFitness(unittest.TestCase):
 
 class TestSolution(unittest.TestCase):
 
+    pool = None
+
+    def setUp(self):
+        self.pool = ThreadPoolExecutor(max_workers=100)
+
+    def tearDownClass(self):
+        self.pool.shutdown()
+        self.pool = None
+
+    def futures_map(self, fn, iterable):
+        return self.pool.map(fn, iterable)
+
     def test_equals_reflexive(self):
         """Test that an object equals itself."""
         int_type = Type(name='int')
@@ -378,7 +384,7 @@ class TestSolution(unittest.TestCase):
         solution_1 = Solution(
             tree=tree_1,
             objectives=(objective,),
-            map_=futures_map
+            map_=self.futures_map
         )
         solution_2 = solution_1
 
@@ -413,17 +419,17 @@ class TestSolution(unittest.TestCase):
         solution_1 = Solution(
             tree=tree_1,
             objectives=(objective,),
-            map_=futures_map
+            map_=self.futures_map
         )
         solution_2 = Solution(
             tree=tree_2,
             objectives=(objective,),
-            map_=futures_map
+            map_=self.futures_map
         )
         another_solution = Solution(
             tree=another_tree,
             objectives=(objective,),
-            map_=futures_map
+            map_=self.futures_map
         )
 
         self.assertFalse(solution_1 is solution_2)
@@ -467,17 +473,17 @@ class TestSolution(unittest.TestCase):
         solution_1 = Solution(
             tree=tree_1,
             objectives=(objective,),
-            map_=futures_map
+            map_=self.futures_map
         )
         solution_2 = Solution(
             tree=tree_2,
             objectives=(objective,),
-            map_=futures_map
+            map_=self.futures_map
         )
         solution_3 = Solution(
             tree=tree_2,
             objectives=(objective,),
-            map_=futures_map
+            map_=self.futures_map
         )
 
         self.assertFalse(solution_1 is solution_2)
@@ -524,23 +530,23 @@ class TestSolution(unittest.TestCase):
         solution_1 = Solution(
             tree=tree_1,
             objectives=(objective,),
-            map_=futures_map
+            map_=self.futures_map
         )
         solution_2 = Solution(
             tree=tree_2,
             objectives=(objective,),
-            map_=futures_map
+            map_=self.futures_map
         )
         another_solution = Solution(
             tree=another_tree,
             objectives=(objective,),
-            map_=futures_map
+            map_=self.futures_map
         )
 
         self.assertFalse(solution_1 is solution_2)
         self.assertFalse(solution_1 is another_solution)
 
-        for _ in xrange(100):
+        for _ in range(100):
             self.assertEqual(solution_1, solution_2)
             self.assertNotEqual(solution_1, another_solution)
 
@@ -573,11 +579,11 @@ class TestSolution(unittest.TestCase):
         solution_1 = Solution(
             tree=tree_1,
             objectives=(objective,),
-            map_=futures_map
+            map_=self.futures_map
         )
         hash_1 = hash(solution_1)
 
-        for _ in xrange(100):
+        for _ in range(100):
             self.assertEqual(hash_1, hash(solution_1))
 
         mock_eval_func.assert_called_once_with(solution_1)
@@ -603,12 +609,12 @@ class TestSolution(unittest.TestCase):
         solution_1 = Solution(
             tree=tree_1,
             objectives=(objective,),
-            map_=futures_map
+            map_=self.futures_map
         )
         solution_2 = Solution(
             tree=tree_2,
             objectives=(objective,),
-            map_=futures_map
+            map_=self.futures_map
         )
 
         self.assertEqual(hash(solution_1), hash(solution_2))
@@ -676,11 +682,11 @@ class TestSolution(unittest.TestCase):
 
         tree = Tree(root=root)
 
-        for _ in xrange(50):
+        for _ in range(50):
             solution = Solution(
                 tree=tree,
                 objectives=(objective_1, objective_2),
-                map_=futures_map
+                map_=self.futures_map
             )
             self.assertTupleEqual(
                 solution.evaluate(),
@@ -712,12 +718,12 @@ class TestSolution(unittest.TestCase):
         solution = Solution(
             tree=tree,
             objectives=(objective,),
-            map_=futures_map
+            map_=self.futures_map
         )
 
         results = [
-            POOL.submit(lambda s: s.evaluate(), solution)
-            for _ in xrange(100)
+            self.pool.submit(lambda s: s.evaluate(), solution)
+            for _ in range(100)
         ]
 
         previous_result = None
@@ -821,15 +827,15 @@ class TestSolution(unittest.TestCase):
         solution_1 = Solution(
             tree=tree_1,
             objectives=(objective,),
-            map_=futures_map
+            map_=self.futures_map
         )
         solution_2 = Solution(
             tree=tree_2,
             objectives=(objective,),
-            map_=futures_map
+            map_=self.futures_map
         )
 
-        for _ in xrange(100):
+        for _ in range(100):
             self.assertEqual(2, len(solution_1))
             self.assertEqual(len(solution_1), len(solution_2))
 
@@ -854,7 +860,7 @@ class TestSolution(unittest.TestCase):
         solution = Solution(
             tree=tree,
             objectives=(objective,),
-            map_=futures_map
+            map_=self.futures_map
         )
 
         pickled_solution = pickle.dumps(solution)
@@ -905,7 +911,7 @@ class TestSolution(unittest.TestCase):
         solution_2.evaluate()
         solution_3.evaluate()
 
-        for _ in xrange(100):
+        for _ in range(100):
             self.assertGreater(solution_1, solution_2)
             self.assertFalse(solution_2 > solution_1)
             self.assertRaises(
@@ -976,7 +982,7 @@ class TestSolution(unittest.TestCase):
         solution_2.evaluate()
         solution_3.evaluate()
 
-        for _ in xrange(100):
+        for _ in range(100):
             self.assertLess(solution_1, solution_2)
             self.assertFalse(solution_2 < solution_1)
             self.assertRaises(

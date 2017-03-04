@@ -31,6 +31,9 @@ class Symbol(object):
     def __getstate__(self):
         return self.name, self.dtype, self._hash
 
+    def __getnewargs__(self):
+        return self.name, self.dtype
+
     def __setstate__(self, state):
         name, dtype, _hash = state
 
@@ -87,6 +90,9 @@ class Operator(object):
     def __getstate__(self):
         return self.symbol, self.signature, self.dtype, self._hash
 
+    def __getnewargs__(self):
+        return self.symbol, self.signature
+
     def __setstate__(self, state):
         symbol, signature, dtype, _hash = state
 
@@ -138,6 +144,10 @@ class Operator(object):
 
         :type args: tuple[zoonomia.solution.Symbol|zoonomia.solution.Call]
 
+        :raise TypeError:
+            If args doesn't match signature or if target is absent and args are
+            present (i.e. this is a basis operator and args are absent).
+
         :return:
             Abstract representation of a function call.
 
@@ -145,7 +155,12 @@ class Operator(object):
 
         """
         if args is not None and target is not None:
-            return Call(target=target, operator=self, args=args)
+            if len(args) != len(self.signature):
+                raise TypeError('args and signature must have same size.')
+            elif not all(a.dtype in s for a, s in zip(args, self.signature)):
+                raise TypeError('arg types must match the signature.')
+            else:
+                return Call(target=target, operator=self, args=args)
         elif args is None and target is None:
             return self.symbol
         else:
@@ -197,6 +212,9 @@ class Call(object):
             self.target, self.symbol, self.args, self.dtype, self.operator,
             self._hash
         )
+
+    def __getnewargs__(self):
+        return self.target, self.operator, self.args
 
     def __setstate__(self, state):
         target, symbol, args, dtype, operator, _hash = state
@@ -265,6 +283,9 @@ class OperatorTable(object):
 
     def __getstate__(self):
         return self.operators, self._dtype_to_operators, self._hash
+
+    def __getnewargs__(self):
+        return self.operators
 
     def __setstate__(self, state):
         operators, _dtype_to_operators, _hash = state

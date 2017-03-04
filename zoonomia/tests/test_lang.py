@@ -678,7 +678,7 @@ class TestOperatorTable(unittest.TestCase):
                         operator_table[collection_type],
                         operator_table[terminal_operator_1.dtype]
                     )
-                ) for _ in xrange(1000)
+                ) for _ in range(1000)
             ]
 
             for fut in futures:

@@ -1,5 +1,5 @@
 import logging
-from Queue import Queue
+from queue import Queue
 from collections import Counter
 from threading import RLock
 
@@ -46,7 +46,7 @@ def calls_iter(tree, result_formatter):
                     name=result_formatter.format(call_count), dtype=node.dtype
                 ),
                 args=tuple(reversed(tuple(
-                    stack.pop() for _ in xrange(signature_length)
+                    stack.pop() for _ in range(signature_length)
                 )))
             )
             stack.append(call.target)
@@ -113,7 +113,7 @@ class Node(object):
         obj.operator = operator
         obj.dtype = obj.operator.dtype
         obj.left = None
-        obj._right = [None for _ in xrange(len(obj.operator.signature) - 1)]
+        obj._right = [None for _ in range(len(obj.operator.signature) - 1)]
         obj.right = None
         obj.depth = 0
 
@@ -125,6 +125,9 @@ class Node(object):
             self.operator, self.dtype, self.left, self._right, self.right,
             self._hash, self.depth
         )
+
+    def __getnewargs__(self):
+        return self.operator
 
     def __setstate__(self, state):
         operator, dtype, left, _right, right, _hash, depth = state
@@ -176,7 +179,7 @@ class Node(object):
         else:
             if self._right is None:
                 self._right = [
-                    None for _ in xrange(len(self.operator.signature) - 1)
+                    None for _ in range(len(self.operator.signature) - 1)
                 ]
             self._right[position - 1] = child
             self.right = tuple(reversed(self._right))
@@ -258,6 +261,9 @@ class Tree(object):
 
     def __getstate__(self):
         return self.root, self.dtype, self._dimensions, self._hash
+
+    def __getnewargs__(self):
+        return self.root
 
     def __setstate__(self, state):
         root, dtype, _dimensions, _hash = state

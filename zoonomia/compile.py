@@ -32,7 +32,7 @@ def compile_python_func(source, name):
     """
     code = compile(source=source, filename='<string>', mode='exec')
     namespace = {}
-    exec code in namespace
+    exec(code, namespace)
     return namespace[name]
 
 

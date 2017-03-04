@@ -95,6 +95,9 @@ class Type(object):
     def __getstate__(self):
         return self.name, self.meta, self._hash
 
+    def __getnewargs__(self):
+        return self.name, self.meta
+
     def __setstate__(self, state):
         name, meta, _hash = state
         self.name = name
@@ -194,6 +197,9 @@ class ParametrizedType(object):
             self.name, self.base_type, self.parameter_types, self.meta,
             self._hash
         )
+
+    def __getnewargs__(self):
+        return self.name, self.base_type, self.parameter_types, self.meta
 
     def __setstate__(self, state):
         name, base_type, parameter_types, meta, _hash = state
@@ -307,6 +313,9 @@ class GenericType(object):
 
     def __getstate__(self):
         return self.name, self.contained_types, self.meta, self._hash
+
+    def __getnewargs__(self):
+        return self.name, self.contained_types, self.meta
 
     def __setstate__(self, state):
         name, contained_types, meta, _hash = state

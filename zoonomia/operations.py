@@ -269,8 +269,8 @@ def mutate_subtree(
 
     """
     dimensions = solution.tree.get_dimensions()
-    target_depth = rng.choice(xrange(len(dimensions) - 1))
-    target_branch = rng.choice(xrange(dimensions[target_depth]))
+    target_depth = rng.choice(range(len(dimensions) - 1))
+    target_branch = rng.choice(range(dimensions[target_depth]))
 
     branch = 0
     root = None
@@ -396,7 +396,7 @@ def _ramped_half_and_half_generator(
     counts, basis_operators, terminal_operators, objectives, dtype, rng
 ):
     for depth, count in counts.items():
-        for _ in xrange(count):
+        for _ in range(count):
             if rng.getrandbits(1):
                 yield full(
                     max_depth=depth,
@@ -420,7 +420,7 @@ def _ramped_half_and_half_generator(
 def _random_depth_counts(max_depth, population_size, rng):
     # computes a histogram of initial tree depths for a population having
     # *population_size* individuals.
-    counts = {d + 1: 0 for d in xrange(max_depth)}
-    for _ in xrange(population_size):
+    counts = {d + 1: 0 for d in range(max_depth)}
+    for _ in range(population_size):
         counts[rng.choice(counts.keys())] += 1
     return counts
