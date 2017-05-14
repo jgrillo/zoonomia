@@ -19,7 +19,7 @@ class Symbol(object):
         :param dtype:
             The type of the underlying data in the execution environment.
 
-        :type dtype: Type or GenericType or ParametrizedType
+        :type dtype: Type|GenericType|ParametrizedType
 
         """
         obj = super(Symbol, cls).__new__(cls)
@@ -28,18 +28,8 @@ class Symbol(object):
         obj._hash = hash((obj.name, obj.dtype))
         return obj
 
-    def __getstate__(self):
-        return self.name, self.dtype, self._hash
-
     def __getnewargs__(self):
         return self.name, self.dtype
-
-    def __setstate__(self, state):
-        name, dtype, _hash = state
-
-        self.name = name
-        self.dtype = dtype
-        self._hash = _hash
 
     def __hash__(self):
         return self._hash
@@ -87,19 +77,8 @@ class Operator(object):
         obj._hash = hash((obj.symbol, obj.signature, obj.dtype))
         return obj
 
-    def __getstate__(self):
-        return self.symbol, self.signature, self.dtype, self._hash
-
     def __getnewargs__(self):
         return self.symbol, self.signature
-
-    def __setstate__(self, state):
-        symbol, signature, dtype, _hash = state
-
-        self.symbol = symbol
-        self.signature = signature
-        self.dtype = dtype
-        self._hash = _hash
 
     def __hash__(self):
         return self._hash
@@ -128,7 +107,7 @@ class Operator(object):
 
     def __call__(self, target=None, args=None):
         """Symbolically "call" this instance's *symbol* on the *args*. Returns
-        a *zoonomia.solution.Call* object which represents an abstract function
+        a *Call* object which represents an abstract function
         call.
 
         :param target:
@@ -138,11 +117,11 @@ class Operator(object):
         :type target: Symbol
 
         :param args:
-            Zero or more *zoonomia.solution.Operator* instances whose string
-            (symbol) representations will form the arguments for the function
-            call in the client language.
+            Zero or more *Operator* instances whose string (symbol) 
+            representations will form the arguments for the function call in 
+            the client language.
 
-        :type args: tuple[zoonomia.solution.Symbol|zoonomia.solution.Call]
+        :type args: tuple[Symbol|Call]
 
         :raise TypeError:
             If args doesn't match signature or if target is absent and args are
@@ -151,7 +130,7 @@ class Operator(object):
         :return:
             Abstract representation of a function call.
 
-        :rtype: zoonomia.solution.Call or zoonomia.solution.Symbol
+        :rtype: Call|Symbol
 
         """
         if args is not None and target is not None:
@@ -193,7 +172,7 @@ class Call(object):
             A tuple of Symbols corresponding to data in the execution
             environment representing arguments to the underlying function.
 
-        :type args: tuple[zoonomia.solution.Symbol]
+        :type args: tuple[Symbol]
 
         """
         obj = super(Call, cls).__new__(cls)
@@ -207,24 +186,8 @@ class Call(object):
         )
         return obj
 
-    def __getstate__(self):
-        return (
-            self.target, self.symbol, self.args, self.dtype, self.operator,
-            self._hash
-        )
-
     def __getnewargs__(self):
         return self.target, self.operator, self.args
-
-    def __setstate__(self, state):
-        target, symbol, args, dtype, operator, _hash = state
-
-        self.target = target
-        self.symbol = symbol
-        self.args = args
-        self.dtype = dtype
-        self.operator = operator
-        self._hash = _hash
 
     def __hash__(self):
         return self._hash
@@ -265,7 +228,7 @@ class OperatorTable(object):
         :param operators:
             An iterable of Operators to initialize this instance with.
 
-        :type operators: collections.Iterable[zoonomia.solution.Operator]
+        :type operators: collections.Iterable[Operator]
 
         """
         obj = super(OperatorTable, cls).__new__(cls)
@@ -281,19 +244,8 @@ class OperatorTable(object):
 
         return obj
 
-    def __getstate__(self):
-        return self.operators, self._dtype_to_operators, self._hash
-
     def __getnewargs__(self):
         return self.operators
-
-    def __setstate__(self, state):
-        operators, _dtype_to_operators, _hash = state
-
-        self.operators = operators
-        self._lock = Lock()
-        self._dtype_to_operators = _dtype_to_operators
-        self._hash = _hash
 
     def __hash__(self):
         return self._hash
@@ -309,10 +261,10 @@ class OperatorTable(object):
         of both this OperatorTable and the other OperatorTable.
 
         :param other: Another OperatorTable.
-        :type other: zoonomia.lang.OperatorTable
+        :type other: OperatorTable
 
         :return: An OperatorTable
-        :rtype: zoonomia.solution.OperatorTable
+        :rtype: OperatorTable
 
         """
         return OperatorTable(operators=self.operators.union(other.operators))

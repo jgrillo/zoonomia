@@ -121,7 +121,7 @@ class TestObjective(unittest.TestCase):
         weight = 42.0
         objective = Objective(eval_func=eval_func, weight=weight)
 
-        pickled_objective = pickle.dumps(objective)
+        pickled_objective = pickle.dumps(objective, -1)
         unpickled_objective = pickle.loads(pickled_objective)
 
         self.assertEqual(objective, unpickled_objective)
@@ -285,7 +285,7 @@ class TestFitness(unittest.TestCase):
         objective = Objective(eval_func=eval_func, weight=weight)
         fitness = Fitness(score=66.6, objective=objective)
 
-        pickled_fitness = pickle.dumps(fitness)
+        pickled_fitness = pickle.dumps(fitness, -1)
         unpickled_fitness = pickle.loads(pickled_fitness)
 
         self.assertEqual(fitness, unpickled_fitness)
@@ -863,7 +863,7 @@ class TestSolution(unittest.TestCase):
             map_=self.futures_map
         )
 
-        pickled_solution = pickle.dumps(solution)
+        pickled_solution = pickle.dumps(solution, -1)
         unpickled_solution = pickle.loads(pickled_solution)
 
         self.assertEqual(solution, unpickled_solution)

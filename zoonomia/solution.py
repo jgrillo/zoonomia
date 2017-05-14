@@ -33,18 +33,8 @@ class Objective(object):
         obj._hash = hash((obj.eval_func, obj.weight))
         return obj
 
-    def __getstate__(self):
-        return self.eval_func, self.weight, self._hash
-
     def __getnewargs__(self):
         return self.eval_func, self.weight
-
-    def __setstate__(self, state):
-        _eval_func, _weight, _hash = state
-
-        self.eval_func = _eval_func
-        self.weight = _weight
-        self._hash = _hash
 
     def __repr__(self):
         return 'Objective(eval_func={eval_func}, weight={weight})'.format(
@@ -103,18 +93,8 @@ class Fitness(object):
         obj._hash = hash((obj.score, obj.objective))
         return obj
 
-    def __getstate__(self):
-        return self.score, self.objective, self._hash
-
     def __getnewargs__(self):
         return self.score, self.objective
-
-    def __setstate__(self, state):
-        score, objective, _hash = state
-
-        self.score = score
-        self.objective = objective
-        self._hash = _hash
 
     def __repr__(self):
         return 'Fitness(score={score}, objective={objective})'.format(
@@ -197,23 +177,8 @@ class Solution(object):  # FIXME: should fitnesses be futures?
         obj._hash = None
         return obj
 
-    def __getstate__(self):
-        return (
-            self.tree, self.objectives, self.map, self.fitnesses, self._hash
-        )
-
     def __getnewargs__(self):
         return self.tree, self.objectives, self.map
-
-    def __setstate__(self, state):
-        tree, objectives, map_, fitnesses, _hash = state
-
-        self.tree = tree
-        self.objectives = objectives
-        self.map = map_
-        self.fitnesses = fitnesses
-        self._hash = _hash
-        self._lock = RLock()
 
     def evaluate(self):
         """Compute the weighted fitness score of a solution with respect to

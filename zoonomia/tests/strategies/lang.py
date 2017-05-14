@@ -5,6 +5,7 @@ use in Hypothesis tests.
 """
 
 import hypothesis.strategies as st
+from hypothesis import settings
 
 from zoonomia.lang import Symbol, Call, Operator, OperatorTable
 
@@ -43,10 +44,9 @@ def default_symbols():
     """
     return symbols(
         name_ts=name_types(),
-        dtype_ts=(
-            default_types() | default_generic_types()
-            | default_parametrized_types()
-        )
+        dtype_ts=default_types()
+        | default_generic_types()
+        | default_parametrized_types()
     )
 
 
@@ -111,10 +111,9 @@ def default_signatures():
 
     """
     return signatures(
-        parameter_ts=(
-            default_types() | default_generic_types()
-            | default_parametrized_types()
-        )
+        parameter_ts=default_types()
+        | default_generic_types()
+        | default_parametrized_types()
     )
 
 

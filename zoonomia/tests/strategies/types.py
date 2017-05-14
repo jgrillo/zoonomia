@@ -116,10 +116,6 @@ def contained_types(contained_ts, min_size=0, max_size=5):
     )
 
 
-def default_contained_types():
-    return contained_types(contained_ts=default_types())
-
-
 def generic_types(name_ts, meta_ts, contained_ts):
     """Build a :class:`zoonomia.types.GenericType` strategy.
 
@@ -130,7 +126,7 @@ def generic_types(name_ts, meta_ts, contained_ts):
     :type meta_ts: hypothesis.strategies.SearchStrategy
 
     :param contained_ts:
-        A frozensets strategy representing contained types. This strategy should
+        A strategy representing contained types. This strategy should
         emit `zoonomia.types.Type` instances.
 
     :type contained_ts: hypothesis.strategies.SearchStrategy
@@ -156,7 +152,7 @@ def generic_types(name_ts, meta_ts, contained_ts):
                 'contained_types': contained_types(contained_ts | children)
             }
         ),
-        max_leaves=5
+        max_leaves=3
     )
 
 
@@ -164,7 +160,7 @@ def default_generic_types():
     return generic_types(
         name_ts=name_types(),
         meta_ts=meta_types(),
-        contained_ts=default_contained_types()
+        contained_ts=default_types()
     )
 
 
@@ -275,7 +271,7 @@ def parametrized_types(name_ts, meta_ts, base_ts, parameter_ts):
                 'parameter_types': parameter_types(parameter_ts | children)
             }
         ),
-        max_leaves=5
+        max_leaves=3
     )
 
 

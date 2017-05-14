@@ -120,25 +120,8 @@ class Node(object):
         obj._hash = hash((obj.operator, obj.left, obj.right, obj.depth))
         return obj
 
-    def __getstate__(self):
-        return (
-            self.operator, self.dtype, self.left, self._right, self.right,
-            self._hash, self.depth
-        )
-
     def __getnewargs__(self):
-        return self.operator
-
-    def __setstate__(self, state):
-        operator, dtype, left, _right, right, _hash, depth = state
-
-        self.operator = operator
-        self.dtype = dtype
-        self.left = left
-        self._right = _right
-        self.right = right
-        self._hash = _hash
-        self.depth = depth
+        return (self.operator,)
 
     def add_child(self, child, position):
         """Add a child to this node corresponding to a *position* in the
@@ -259,20 +242,8 @@ class Tree(object):
         obj._hash = None
         return obj
 
-    def __getstate__(self):
-        return self.root, self.dtype, self._dimensions, self._hash
-
     def __getnewargs__(self):
-        return self.root
-
-    def __setstate__(self, state):
-        root, dtype, _dimensions, _hash = state
-
-        self.root = root
-        self.dtype = dtype
-        self._dimensions = _dimensions
-        self._lock = RLock()
-        self._hash = _hash
+        return (self.root,)
 
     def __iter__(self):
         """Returns a post-order depth-first iterator over all nodes in this

@@ -96,7 +96,7 @@ class TestType(unittest.TestCase):
         default protocol.
 
         """
-        pickled_type = pickle.dumps(type1)
+        pickled_type = pickle.dumps(type1, -1)
         unpickled_type = pickle.loads(pickled_type)
 
         self.assertEqual(type1, unpickled_type)
@@ -264,7 +264,7 @@ class TestParametrizedType(unittest.TestCase):
         using the default protocol.
 
         """
-        pickled_parametrized_type = pickle.dumps(ptype1)
+        pickled_parametrized_type = pickle.dumps(ptype1, -1)
         unpickled_parametrized_type = pickle.loads(pickled_parametrized_type)
 
         self.assertEqual(ptype1, unpickled_parametrized_type)
@@ -778,7 +778,7 @@ class TestGenericType(unittest.TestCase):
         the default protocol.
 
         """
-        pickled_generic_type = pickle.dumps(gtype1)
+        pickled_generic_type = pickle.dumps(gtype1, -1)
         unpickled_generic_type = pickle.loads(pickled_generic_type)
 
         self.assertEqual(gtype1, unpickled_generic_type)

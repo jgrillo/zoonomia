@@ -102,7 +102,7 @@ class TestSymbol(unittest.TestCase):
         default protocol.
 
         """
-        pickled_symbol = pickle.dumps(symbol1)
+        pickled_symbol = pickle.dumps(symbol1, -1)
         unpickled_symbol = pickle.loads(pickled_symbol)
 
         self.assertEqual(symbol1, unpickled_symbol)
@@ -196,7 +196,7 @@ class TestCall(unittest.TestCase):
         default protocol.
 
         """
-        pickled_call = pickle.dumps(call1)
+        pickled_call = pickle.dumps(call1, -1)
         unpickled_call = pickle.loads(pickled_call)
 
         self.assertEqual(call1, unpickled_call)
@@ -294,7 +294,7 @@ class TestOperator(unittest.TestCase):
         the default protocol.
 
         """
-        pickled_operator = pickle.dumps(operator1)
+        pickled_operator = pickle.dumps(operator1, -1)
         unpickled_operator = pickle.loads(pickled_operator)
 
         self.assertEqual(operator1, unpickled_operator)
@@ -424,7 +424,7 @@ class TestOperatorTable(unittest.TestCase):
         the default protocol.
 
         """
-        pickled_operator_table = pickle.dumps(table1)
+        pickled_operator_table = pickle.dumps(table1, -1)
         unpickled_operator_table = pickle.loads(pickled_operator_table)
 
         self.assertEqual(table1, unpickled_operator_table)
@@ -838,6 +838,6 @@ class TestOperatorTable(unittest.TestCase):
         an iterator over its *operators* attribute.
 
         """
-        self.assertItemsEqual(
-            table1.operators, iter(table1)
+        self.assertSequenceEqual(
+            table1.operators, iter(table1), seq_type=frozenset
         )

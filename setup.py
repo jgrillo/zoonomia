@@ -60,6 +60,6 @@ setup(
     ),
     install_requires=REQUIREMENTS,
     tests_require=REQUIREMENTS_TEST,
-    setup_requires=['pytest-runner==2.10.1'],
+    setup_requires=['pytest-runner==2.11.1', 'setuptools==35.0.2'],
     zip_safe=False
 )
