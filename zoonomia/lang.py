@@ -7,7 +7,7 @@ class Symbol(object):
 
     __slots__ = ('name', 'dtype', '_hash')
 
-    def __new__(cls, name, dtype):
+    def __init__(self, name, dtype):
         """A Symbol instance represents some data *symbol* in an alien
         execution environment.
 
@@ -22,14 +22,15 @@ class Symbol(object):
         :type dtype: Type|GenericType|ParametrizedType
 
         """
-        obj = super(Symbol, cls).__new__(cls)
-        obj.name = name
-        obj.dtype = dtype
-        obj._hash = hash((obj.name, obj.dtype))
-        return obj
+        self.name = name
+        self.dtype = dtype
+        self._hash = hash((self.name, self.dtype))
 
-    def __getnewargs__(self):
-        return self.name, self.dtype
+    def __getstate__(self):
+        return {'name': self.name, 'dtype': self.dtype}
+
+    def __setstate__(self, state):
+        self.__init__(state['name'], state['dtype'])
 
     def __hash__(self):
         return self._hash
@@ -50,7 +51,7 @@ class Operator(object):
 
     __slots__ = ('symbol', 'signature', 'dtype', '_hash')
 
-    def __new__(cls, symbol, signature=tuple()):
+    def __init__(self, symbol, signature=tuple()):
         """An Operator is an abstraction over some underlying function, perhaps
         in an alien programming language or environment, which takes arguments
         conforming to the given type *signature* and returns a value of type
@@ -70,15 +71,16 @@ class Operator(object):
         :type signature: tuple[Type|ParametrizedType|GenericType]
 
         """
-        obj = super(Operator, cls).__new__(cls)
-        obj.symbol = symbol
-        obj.signature = signature
-        obj.dtype = symbol.dtype
-        obj._hash = hash((obj.symbol, obj.signature, obj.dtype))
-        return obj
+        self.symbol = symbol
+        self.signature = signature
+        self.dtype = symbol.dtype
+        self._hash = hash((self.symbol, self.signature, self.dtype))
 
-    def __getnewargs__(self):
-        return self.symbol, self.signature
+    def __getstate__(self):
+        return {'symbol': self.symbol, 'signature': self.signature}
+
+    def __setstate__(self, state):
+        self.__init__(state['symbol'], state['signature'])
 
     def __hash__(self):
         return self._hash
@@ -150,7 +152,7 @@ class Call(object):
 
     __slots__ = ('target', 'symbol', 'args', 'dtype', 'operator', '_hash')
 
-    def __new__(cls, target, operator, args):
+    def __init__(self, target, operator, args):
         """A Call instance represents a function call in an alien execution
         environment. A Call associates an Operator having a particular type
         *signature* and a tuple of concrete arguments *args* of the
@@ -175,19 +177,22 @@ class Call(object):
         :type args: tuple[Symbol]
 
         """
-        obj = super(Call, cls).__new__(cls)
-        obj.target = target
-        obj.dtype = operator.dtype
-        obj.symbol = operator.symbol
-        obj.operator = operator
-        obj.args = args
-        obj._hash = hash(
-            (obj.target, obj.dtype, obj.symbol, obj.operator, obj.args)
+        self.target = target
+        self.dtype = operator.dtype
+        self.symbol = operator.symbol
+        self.operator = operator
+        self.args = args
+        self._hash = hash(
+            (self.target, self.dtype, self.symbol, self.operator, self.args)
         )
-        return obj
 
-    def __getnewargs__(self):
-        return self.target, self.operator, self.args
+    def __getstate__(self):
+        return {
+            'target': self.target, 'operator': self.operator, 'args': self.args
+        }
+
+    def __setstate__(self, state):
+        self.__init__(state['target'], state['operator'], state['args'])
 
     def __hash__(self):
         return self._hash
@@ -218,7 +223,7 @@ class OperatorTable(object):
 
     __slots__ = ('operators', '_dtype_to_operators', '_lock', '_hash')
 
-    def __new__(cls, operators):
+    def __init__(self, operators):
         """An OperatorTable contains Operators and also provides a convenient
         mapping which allows a user to select the subset of operators having
         output types which can be resolved to a particular type. This object is
@@ -231,21 +236,21 @@ class OperatorTable(object):
         :type operators: collections.Iterable[Operator]
 
         """
-        obj = super(OperatorTable, cls).__new__(cls)
-        obj.operators = frozenset(operators)
-        obj._lock = Lock()
-        obj._dtype_to_operators = dict()
-        obj._hash = hash(('OperatorTable', obj.operators))
+        self.operators = frozenset(operators)
+        self._lock = Lock()
+        self._dtype_to_operators = dict()
+        self._hash = hash(('OperatorTable', self.operators))
 
-        for operator in obj.operators:
-            obj._dtype_to_operators[operator.dtype] = frozenset(
-                o for o in obj.operators if o.dtype in operator.dtype
+        for operator in self.operators:
+            self._dtype_to_operators[operator.dtype] = frozenset(
+                o for o in self.operators if o.dtype in operator.dtype
             )
 
-        return obj
+    def __getstate__(self):
+        return {'operators': self.operators}
 
-    def __getnewargs__(self):
-        return self.operators
+    def __setstate__(self, state):
+        self.__init__(state['operators'])
 
     def __hash__(self):
         return self._hash

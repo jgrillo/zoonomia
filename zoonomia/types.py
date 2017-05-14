@@ -59,7 +59,7 @@ class Type(object):
 
     __slots__ = ('name', 'meta', '_hash', '_cache', '_lock')
 
-    def __new__(cls, name, meta=None):
+    def __init__(self, name, meta=None):
         """A Type instance represents a base type in Zoonomia's type system. A
         Type is distinguished from other Types by its name and metadata.
 
@@ -74,16 +74,17 @@ class Type(object):
         :type meta: object
 
         """
-        obj = super(Type, cls).__new__(cls)
-        obj.name = name
-        obj.meta = meta
-        obj._hash = hash((obj.name, obj.meta))
-        obj._cache = set()
-        obj._lock = RLock()
-        return obj
+        self.name = name
+        self.meta = meta
+        self._hash = hash((self.name, self.meta))
+        self._cache = set()
+        self._lock = RLock()
 
-    def __getnewargs__(self):
-        return self.name, self.meta
+    def __getstate__(self):
+        return {'name': self.name, 'meta': self.meta}
+
+    def __setstate__(self, state):
+        self.__init__(state['name'], state['meta'])
 
     def __hash__(self):
         return self._hash
@@ -146,7 +147,7 @@ class ParametrizedType(object):
         '_lock'
     )
 
-    def __new__(cls, name, base_type, parameter_types, meta=None):
+    def __init__(self, name, base_type, parameter_types, meta=None):
         """A ParametrizedType is constructed with a name, a GenericType or Type
         *base_type*, a tuple[ParametrizedType|GenericType|Type]
         *parameter_types*, and (optionally) some metadata.
@@ -172,20 +173,31 @@ class ParametrizedType(object):
         :type meta: object
 
         """
-        obj = super(ParametrizedType, cls).__new__(cls)
-        obj.name = name
-        obj.base_type = base_type
-        obj.parameter_types = parameter_types
-        obj.meta = meta
-        obj._hash = hash(
-            (obj.name, obj.base_type, obj.parameter_types, obj.meta)
+        self.name = name
+        self.base_type = base_type
+        self.parameter_types = parameter_types
+        self.meta = meta
+        self._hash = hash(
+            (self.name, self.base_type, self.parameter_types, self.meta)
         )
-        obj._cache = set()
-        obj._lock = RLock()
-        return obj
+        self._cache = set()
+        self._lock = RLock()
 
-    def __getnewargs__(self):
-        return self.name, self.base_type, self.parameter_types, self.meta
+    def __getstate__(self):
+        return {
+            'name': self.name,
+            'base_type': self.base_type,
+            'parameter_types': self.parameter_types,
+            'meta': self.meta
+        }
+
+    def __setstate__(self, state):
+        self.__init__(
+            state['name'],
+            state['base_type'],
+            state['parameter_types'],
+            state['meta']
+        )
 
     def __hash__(self):
         return self._hash
@@ -264,7 +276,7 @@ class GenericType(object):
 
     __slots__ = ('name', 'contained_types', 'meta', '_hash', '_cache', '_lock')
 
-    def __new__(cls, name, contained_types, meta=None):
+    def __init__(self, name, contained_types, meta=None):
         """A generic type is constructed with a name and a frozenset of
         *contained_types*. The *contained_types* represent the set of possible
         types to which this generic can be resolved.
@@ -287,17 +299,22 @@ class GenericType(object):
         :type meta: object
 
         """
-        obj = super(GenericType, cls).__new__(cls)
-        obj.name = name
-        obj.contained_types = contained_types
-        obj.meta = meta
-        obj._hash = hash((obj.name, obj.contained_types, obj.meta))
-        obj._cache = set()
-        obj._lock = RLock()
-        return obj
+        self.name = name
+        self.contained_types = contained_types
+        self.meta = meta
+        self._hash = hash((self.name, self.contained_types, self.meta))
+        self._cache = set()
+        self._lock = RLock()
 
-    def __getnewargs__(self):
-        return self.name, self.contained_types, self.meta
+    def __getstate__(self):
+        return {
+            'name': self.name,
+            'contained_types': self.contained_types,
+            'meta': self.meta
+        }
+
+    def __setstate__(self, state):
+        self.__init__(state['name'], state['contained_types'], state['meta'])
 
     def __hash__(self):
         return self._hash

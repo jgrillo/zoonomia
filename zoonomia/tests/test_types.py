@@ -93,13 +93,20 @@ class TestType(unittest.TestCase):
     @given(default_types())
     def test_type_pickle(self, type1):
         """Test that a Type instance can be pickled and unpickled using the
-        default protocol.
+        0 protocol and the -1 protocol.
 
         """
         pickled_type = pickle.dumps(type1, -1)
         unpickled_type = pickle.loads(pickled_type)
 
         self.assertEqual(type1, unpickled_type)
+        self.assertEqual(hash(type1), hash(unpickled_type))
+
+        pickled_type = pickle.dumps(type1, 0)
+        unpickled_type = pickle.loads(pickled_type)
+
+        self.assertEqual(type1, unpickled_type)
+        self.assertEqual(hash(type1), hash(unpickled_type))
 
     @given(
         st.shared(default_types(), key='test_type_contains_1'),
@@ -261,13 +268,20 @@ class TestParametrizedType(unittest.TestCase):
     @given(default_parametrized_types())
     def test_parametrized_type_pickle(self, ptype1):
         """Test that a ParametrizedType instance can be pickled and unpickled
-        using the default protocol.
+        using the 0 protocol and the -1 protocol.
 
         """
         pickled_parametrized_type = pickle.dumps(ptype1, -1)
         unpickled_parametrized_type = pickle.loads(pickled_parametrized_type)
 
         self.assertEqual(ptype1, unpickled_parametrized_type)
+        self.assertEqual(hash(ptype1), hash(unpickled_parametrized_type))
+
+        pickled_parametrized_type = pickle.dumps(ptype1, 0)
+        unpickled_parametrized_type = pickle.loads(pickled_parametrized_type)
+
+        self.assertEqual(ptype1, unpickled_parametrized_type)
+        self.assertEqual(hash(ptype1), hash(unpickled_parametrized_type))
 
     @given(
         st.shared(default_parametrized_types(), key='test_pt_contains1'),
@@ -775,13 +789,20 @@ class TestGenericType(unittest.TestCase):
     @given(default_parametrized_types())
     def test_generic_type_pickle(self, gtype1):
         """Test that a GenericType instance can be pickled and unpickled using
-        the default protocol.
+        the 0 protocol and the -1 protocol.
 
         """
         pickled_generic_type = pickle.dumps(gtype1, -1)
         unpickled_generic_type = pickle.loads(pickled_generic_type)
 
         self.assertEqual(gtype1, unpickled_generic_type)
+        self.assertEqual(hash(gtype1), hash(unpickled_generic_type))
+
+        pickled_generic_type = pickle.dumps(gtype1, 0)
+        unpickled_generic_type = pickle.loads(pickled_generic_type)
+
+        self.assertEqual(gtype1, unpickled_generic_type)
+        self.assertEqual(hash(gtype1), hash(unpickled_generic_type))
 
     @given(
         st.shared(default_generic_types(), key='test_gt_contains1'),

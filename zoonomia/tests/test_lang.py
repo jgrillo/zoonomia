@@ -99,13 +99,20 @@ class TestSymbol(unittest.TestCase):
     @given(default_symbols())
     def test_symbol_pickle(self, symbol1):
         """Test that a Symbol instance can be pickled and unpickled using the
-        default protocol.
+        0 protocol and the -1 protocol.
 
         """
         pickled_symbol = pickle.dumps(symbol1, -1)
         unpickled_symbol = pickle.loads(pickled_symbol)
 
         self.assertEqual(symbol1, unpickled_symbol)
+        self.assertEqual(hash(symbol1), hash(unpickled_symbol))
+
+        pickled_symbol = pickle.dumps(symbol1, 0)
+        unpickled_symbol = pickle.loads(pickled_symbol)
+
+        self.assertEqual(symbol1, unpickled_symbol)
+        self.assertEqual(hash(symbol1), hash(unpickled_symbol))
 
 
 class TestCall(unittest.TestCase):
@@ -216,13 +223,20 @@ class TestCall(unittest.TestCase):
     )
     def test_call_pickle(self, call1):
         """Test that a Call instance can be pickled and unpickled using the
-        default protocol.
+        0 protocol and the -1 protocol.
 
         """
         pickled_call = pickle.dumps(call1, -1)
         unpickled_call = pickle.loads(pickled_call)
 
         self.assertEqual(call1, unpickled_call)
+        self.assertEqual(hash(call1), hash(unpickled_call))
+
+        pickled_call = pickle.dumps(call1, 0)
+        unpickled_call = pickle.loads(pickled_call)
+
+        self.assertEqual(call1, unpickled_call)
+        self.assertEqual(hash(call1), hash(unpickled_call))
 
 
 class TestOperator(unittest.TestCase):
@@ -337,13 +351,20 @@ class TestOperator(unittest.TestCase):
     )
     def test_operator_pickle(self, operator1):
         """Test that an Operator inctance can be pickled and unpickled using
-        the default protocol.
+        the 0 protocol and the -1 protocol.
 
         """
         pickled_operator = pickle.dumps(operator1, -1)
         unpickled_operator = pickle.loads(pickled_operator)
 
         self.assertEqual(operator1, unpickled_operator)
+        self.assertEqual(hash(operator1), hash(unpickled_operator))
+
+        pickled_operator = pickle.dumps(operator1, 0)
+        unpickled_operator = pickle.loads(pickled_operator)
+
+        self.assertEqual(operator1, unpickled_operator)
+        self.assertEqual(hash(operator1), hash(unpickled_operator))
 
     def test_operator_call_raises_when_target_present_and_args_absent(self):
         terminal_operator = Operator(
@@ -493,13 +514,20 @@ class TestOperatorTable(unittest.TestCase):
     )
     def test_operator_table_pickle(self, table1):
         """Test that an OperatorTable instance can be pickled and unpickled using
-        the default protocol.
+        the 0 protocol and the -1 protocol.
 
         """
         pickled_operator_table = pickle.dumps(table1, -1)
         unpickled_operator_table = pickle.loads(pickled_operator_table)
 
         self.assertEqual(table1, unpickled_operator_table)
+        self.assertEqual(hash(table1), hash(unpickled_operator_table))
+
+        pickled_operator_table = pickle.dumps(table1, 0)
+        unpickled_operator_table = pickle.loads(pickled_operator_table)
+
+        self.assertEqual(table1, unpickled_operator_table)
+        self.assertEqual(hash(table1), hash(unpickled_operator_table))
 
     def test_operator_table_lookup(self):
         """Test that an OperatorTable acts legit wrt lookups by *dtype*."""

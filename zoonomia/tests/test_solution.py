@@ -115,7 +115,7 @@ class TestObjective(unittest.TestCase):
 
     def test_objective_pickle(self):
         """Test that an Objective instance can be pickled and unpickled using
-        the default protocol.
+        the 0 protocol and the -1 protocol.
 
         """
         weight = 42.0
@@ -125,6 +125,13 @@ class TestObjective(unittest.TestCase):
         unpickled_objective = pickle.loads(pickled_objective)
 
         self.assertEqual(objective, unpickled_objective)
+        self.assertEqual(hash(objective), hash(unpickled_objective))
+
+        pickled_objective = pickle.dumps(objective, 0)
+        unpickled_objective = pickle.loads(pickled_objective)
+
+        self.assertEqual(objective, unpickled_objective)
+        self.assertEqual(hash(objective), hash(unpickled_objective))
 
     def test_objective_evaluate(self):
         """Test that calling an Objective's *evaluate* method produces a
@@ -278,7 +285,7 @@ class TestFitness(unittest.TestCase):
 
     def test_fitness_pickle(self):
         """Test that a Fitness instance can be pickled and unpickled using the
-        default protocol.
+        0 protocol and the -1 protocol.
 
         """
         weight = 42.0
@@ -289,6 +296,13 @@ class TestFitness(unittest.TestCase):
         unpickled_fitness = pickle.loads(pickled_fitness)
 
         self.assertEqual(fitness, unpickled_fitness)
+        self.assertEqual(hash(fitness), hash(unpickled_fitness))
+
+        pickled_fitness = pickle.dumps(fitness, 0)
+        unpickled_fitness = pickle.loads(pickled_fitness)
+
+        self.assertEqual(fitness, unpickled_fitness)
+        self.assertEqual(hash(fitness), hash(unpickled_fitness))
 
     def test_fitness_gt(self):
         """Test that fitness_1 with score_1 > score_2 is greater than fitness_2
@@ -840,7 +854,7 @@ class TestSolution(unittest.TestCase):
 
     def test_solution_pickle(self):
         """Test that a Solution instance can be pickled and unpickled using the
-        default protocol.
+        0 protocol and the -1 protocol.
 
         """
         int_type = Type(name='int')
@@ -857,13 +871,20 @@ class TestSolution(unittest.TestCase):
         solution = Solution(
             tree=tree,
             objectives=(objective,),
-            map_=self.futures_map
+            map_=map
         )
 
         pickled_solution = pickle.dumps(solution, -1)
         unpickled_solution = pickle.loads(pickled_solution)
 
         self.assertEqual(solution, unpickled_solution)
+        self.assertEqual(hash(solution), hash(unpickled_solution))
+
+        pickled_solution = pickle.dumps(solution, 0)
+        unpickled_solution = pickle.loads(pickled_solution)
+
+        self.assertEqual(solution, unpickled_solution)
+        self.assertEqual(hash(solution), hash(unpickled_solution))
 
     def test_solution_gt(self):
         """Test that a Solution which dominates another solution and has equal

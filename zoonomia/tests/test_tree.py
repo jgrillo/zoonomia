@@ -339,7 +339,7 @@ class TestNode(unittest.TestCase):
 
     def test_node_pickle(self):
         """Test that a Node instance can be pickled and unpickled using the
-        default protocol.
+        0 protocol and -1 protocol.
 
         """
         some_type = Type(name='SomeType')
@@ -372,6 +372,13 @@ class TestNode(unittest.TestCase):
         unpickled_root = pickle.loads(pickled_root)
 
         self.assertEqual(root, unpickled_root)
+        self.assertEqual(hash(root), hash(unpickled_root))
+
+        pickled_root = pickle.dumps(root, 0)
+        unpickled_root = pickle.loads(pickled_root)
+
+        self.assertEqual(root, unpickled_root)
+        self.assertEqual(hash(root), hash(unpickled_root))
 
 
 class TestTree(unittest.TestCase):
@@ -1981,7 +1988,7 @@ class TestTree(unittest.TestCase):
 
     def test_tree_pickle(self):
         """Test that a Tree instance can be pickled and unpickled using the
-        default protocol.
+        0 protocol and the -1 protocol.
 
         """
         some_type = Type(name='SomeType')
@@ -2020,6 +2027,16 @@ class TestTree(unittest.TestCase):
         unpickled_bfs_nodes = tuple(n for n in unpickled_tree.bfs_iter())
 
         self.assertEqual(tree, unpickled_tree)
+        self.assertEqual(hash(tree), hash(unpickled_tree))
+        self.assertTupleEqual(bfs_nodes, unpickled_bfs_nodes)
+
+        pickled_tree = pickle.dumps(tree, 0)
+        unpickled_tree = pickle.loads(pickled_tree)
+
+        unpickled_bfs_nodes = tuple(n for n in unpickled_tree.bfs_iter())
+
+        self.assertEqual(tree, unpickled_tree)
+        self.assertEqual(hash(tree), hash(unpickled_tree))
         self.assertTupleEqual(bfs_nodes, unpickled_bfs_nodes)
 
     def test_calls_iter(self):

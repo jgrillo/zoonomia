@@ -94,11 +94,9 @@ class Node(object):
 
     """
 
-    __slots__ = (
-        'operator', 'dtype', 'left', '_right', 'right', '_hash', 'depth'
-    )
+    __slots__ = ('operator', 'dtype', 'left', '_right', 'right', 'depth')
 
-    def __new__(cls, operator):
+    def __init__(self, operator):
         """A node holds a reference to an operator. Optionally, a node can hold
         references to child nodes provided that those child nodes' operators'
         dtypes match this node's operator's signature.
@@ -109,19 +107,28 @@ class Node(object):
         :type operator: zoonomia.lang.Operator
 
         """
-        obj = super(Node, cls).__new__(cls)
-        obj.operator = operator
-        obj.dtype = obj.operator.dtype
-        obj.left = None
-        obj._right = [None for _ in range(len(obj.operator.signature) - 1)]
-        obj.right = None
-        obj.depth = 0
+        self.operator = operator
+        self.dtype = self.operator.dtype
+        self.left = None
+        self._right = [None for _ in range(len(self.operator.signature) - 1)]
+        self.right = None
+        self.depth = 0
 
-        obj._hash = hash((obj.operator, obj.left, obj.right, obj.depth))
-        return obj
+    def __getstate__(self):
+        return {
+            'operator': self.operator,
+            'left': self.left,
+            '_right': self._right,
+            'right': self.right,
+            'depth': self.depth
+        }
 
-    def __getnewargs__(self):
-        return (self.operator,)
+    def __setstate__(self, state):
+        self.__init__(state['operator'])
+        self.left = state['left']
+        self._right = state['_right']
+        self.right = state['right']
+        self.depth = state['depth']
 
     def add_child(self, child, position):
         """Add a child to this node corresponding to a *position* in the
@@ -160,14 +167,9 @@ class Node(object):
         elif position == 0:
             self.left = child
         else:
-            if self._right is None:
-                self._right = [
-                    None for _ in range(len(self.operator.signature) - 1)
-                ]
             self._right[position - 1] = child
             self.right = tuple(reversed(self._right))
         child.depth = self.depth + 1
-        self._hash = hash((self.operator, self.left, self.right, self.depth))
 
     def __hash__(self):
         """Compute the integer hashcode for this node instance.
@@ -180,7 +182,9 @@ class Node(object):
         :rtype: int
 
         """
-        return self._hash
+        return hash(
+            (self.operator, hash(self.left), hash(self.right), self.depth)
+        )
 
     def __eq__(self, other):
         return (
@@ -221,7 +225,7 @@ class Tree(object):
 
     __slots__ = ('root', 'dtype', '_dimensions', '_lock', '_hash')
 
-    def __new__(cls, root):
+    def __init__(self, root):
         """A Tree instance is a thin wrapper around a tree data structure
         composed of Nodes that supports post-order depth-first iteration over
         all the nodes. You should ensure that the tree data structure is
@@ -234,16 +238,17 @@ class Tree(object):
         :type root: zoonomia.tree.Node
 
         """
-        obj = super(Tree, cls).__new__(cls)
-        obj.root = root
-        obj.dtype = root.dtype
-        obj._dimensions = None
-        obj._lock = RLock()
-        obj._hash = None
-        return obj
+        self.root = root
+        self.dtype = root.dtype
+        self._dimensions = None
+        self._lock = RLock()
+        self._hash = None
 
-    def __getnewargs__(self):
-        return (self.root,)
+    def __getstate__(self):
+        return {'root': self.root}
+
+    def __setstate__(self, state):
+        self.__init__(state['root'])
 
     def __iter__(self):
         """Returns a post-order depth-first iterator over all nodes in this

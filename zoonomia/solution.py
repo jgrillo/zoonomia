@@ -9,7 +9,7 @@ class Objective(object):
 
     __slots__ = ('eval_func', 'weight', '_hash')
 
-    def __new__(cls, eval_func, weight):
+    def __init__(self, eval_func, weight):
         """An Objective contains a reference to a function for evaluating a
         Solution, and a weight by which the resulting fitness score will be
         multiplied.
@@ -27,14 +27,15 @@ class Objective(object):
         :type weight: float
 
         """
-        obj = super(Objective, cls).__new__(cls)
-        obj.eval_func = eval_func
-        obj.weight = weight
-        obj._hash = hash((obj.eval_func, obj.weight))
-        return obj
+        self.eval_func = eval_func
+        self.weight = weight
+        self._hash = hash((self.eval_func, self.weight))
 
-    def __getnewargs__(self):
-        return self.eval_func, self.weight
+    def __getstate__(self):
+        return {'eval_func': self.eval_func, 'weight': self.weight}
+
+    def __setstate__(self, state):
+        self.__init__(state['eval_func'], state['weight'])
 
     def __repr__(self):
         return 'Objective(eval_func={eval_func}, weight={weight})'.format(
@@ -75,7 +76,7 @@ class Fitness(object):
 
     __slots__ = ('score', 'objective', '_hash')
 
-    def __new__(cls, score, objective):
+    def __init__(self, score, objective):
         """A Fitness maps a fitness measurement to an Objective, and provides
         comparison methods which allow a user to impose an ordering (by
         *score*) on a collection of Fitness objects.
@@ -87,14 +88,15 @@ class Fitness(object):
         :type objective: zoonomia.solution.Objective
 
         """
-        obj = super(Fitness, cls).__new__(cls)
-        obj.score = score
-        obj.objective = objective
-        obj._hash = hash((obj.score, obj.objective))
-        return obj
+        self.score = score
+        self.objective = objective
+        self._hash = hash((self.score, self.objective))
 
-    def __getnewargs__(self):
-        return self.score, self.objective
+    def __getstate__(self):
+        return {'score': self.score, 'objective': self.objective}
+
+    def __setstate__(self, state):
+        self.__init__(state['score'], state['objective'])
 
     def __repr__(self):
         return 'Fitness(score={score}, objective={objective})'.format(
@@ -141,7 +143,7 @@ class Solution(object):  # FIXME: should fitnesses be futures?
 
     __slots__ = ('tree', 'map', 'objectives', 'fitnesses', '_hash', '_lock')
 
-    def __new__(cls, tree, objectives, map_=map):
+    def __init__(self, tree, objectives, map_=map):
         """A Solution instance unites a Tree representation with a tuple of
         Objectives, and provides functionality to evaluate the representation's
         fitness with respect to each of those Objectives. Solution instances
@@ -168,17 +170,20 @@ class Solution(object):  # FIXME: should fitnesses be futures?
             ((T) -> U, collections.Iterable[T]) -> collectons.Iterable[U]
 
         """
-        obj = super(Solution, cls).__new__(cls)
-        obj.tree = tree
-        obj.objectives = objectives
-        obj.map = map_
-        obj.fitnesses = None
-        obj._lock = RLock()
-        obj._hash = None
-        return obj
+        self.tree = tree
+        self.objectives = objectives
+        self.map = map_
+        self.fitnesses = None
+        self._lock = RLock()
+        self._hash = None
 
-    def __getnewargs__(self):
-        return self.tree, self.objectives, self.map
+    def __getstate__(self):
+        return {
+            'tree': self.tree, 'objectives': self.objectives, 'map_': self.map
+        }
+
+    def __setstate__(self, state):
+        self.__init__(state['tree'], state['objectives'], state['map_'])
 
     def evaluate(self):
         """Compute the weighted fitness score of a solution with respect to
