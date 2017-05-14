@@ -3,7 +3,7 @@ import pickle
 
 import hypothesis.strategies as st
 
-from hypothesis import given
+from hypothesis import given, settings, HealthCheck
 from concurrent.futures import ThreadPoolExecutor
 
 from zoonomia.types import Type, GenericType, ParametrizedType
@@ -109,10 +109,15 @@ class TestSymbol(unittest.TestCase):
 
 
 class TestCall(unittest.TestCase):
+    BUFFER_SIZE = 8192 * 4
+    SUPPRESSED_HEALTH_CHECKS = (HealthCheck.too_slow,)
 
     @given(
         st.shared(default_calls(), key='test_call_equals_reflexive'),
         st.shared(default_calls(), key='test_call_equals_reflexive')
+    )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
     )
     def test_equals_reflexive(self, call1, call2):
         """Test that an object equals itself."""
@@ -120,6 +125,9 @@ class TestCall(unittest.TestCase):
         self.assertEqual(call1, call2)
 
     @given(st.data())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_equals_symmetric(self, data):
         """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
         d = data.draw(distinct_calls(call_ts=default_calls()))
@@ -145,6 +153,9 @@ class TestCall(unittest.TestCase):
             lambda c: Call(target=c.target, operator=c.operator, args=c.args)
         )
     )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_equals_transitive(self, call1, call2, call3):
         """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
         self.assertEqual(call1, call2)
@@ -152,6 +163,9 @@ class TestCall(unittest.TestCase):
         self.assertEqual(call1, call3)
 
     @given(st.data())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_equals_consistent(self, data):
         """Test that repeated equals calls return the same value."""
         d = data.draw(distinct_calls(call_ts=default_calls()))
@@ -171,6 +185,9 @@ class TestCall(unittest.TestCase):
         self.assertNotEqual(call1, another_call)
 
     @given(default_calls())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_hash_consistent(self, call1):
         """Test that repeated hash calls yield the same value."""
         hash1 = hash(call1)
@@ -185,12 +202,18 @@ class TestCall(unittest.TestCase):
             lambda c: Call(target=c.target, operator=c.operator, args=c.args)
         )
     )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_hash_equals(self, call1, call2):
         """Test that when two objects are equal their hashes are equal."""
         self.assertEqual(call1, call2)
         self.assertEqual(hash(call1), hash(call2))
 
     @given(default_calls())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_call_pickle(self, call1):
         """Test that a Call instance can be pickled and unpickled using the
         default protocol.
@@ -203,10 +226,15 @@ class TestCall(unittest.TestCase):
 
 
 class TestOperator(unittest.TestCase):
+    BUFFER_SIZE = 8192 * 4
+    SUPPRESSED_HEALTH_CHECKS = (HealthCheck.too_slow,)
 
     @given(
         st.shared(default_operators(), key='test_operator_equals_reflexive'),
         st.shared(default_operators(), key='test_operator_equals_reflexive')
+    )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
     )
     def test_equals_reflexive(self, operator1, operator2):
         """Test that an object equals itself."""
@@ -214,6 +242,9 @@ class TestOperator(unittest.TestCase):
         self.assertEqual(operator1, operator2)
 
     @given(st.data())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_equals_symmetric(self, data):
         """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
         d = data.draw(distinct_operators(operator_ts=default_operators()))
@@ -243,6 +274,9 @@ class TestOperator(unittest.TestCase):
             lambda o: Operator(symbol=o.symbol, signature=o.signature)
         )
     )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_equals_transitive(self, operator1, operator2, operator3):
         """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
         self.assertEqual(operator1, operator2)
@@ -250,6 +284,9 @@ class TestOperator(unittest.TestCase):
         self.assertEqual(operator1, operator3)
 
     @given(st.data())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_equals_consistent(self, data):
         """Test that repeated equals calls return the same value."""
         d = data.draw(distinct_operators(operator_ts=default_operators()))
@@ -269,6 +306,9 @@ class TestOperator(unittest.TestCase):
         self.assertNotEqual(operator1, another_operator)
 
     @given(default_operators())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_hash_consistent(self, operator1):
         """Test that repeated hash calls yield the same value."""
         hash1 = hash(operator1)
@@ -283,12 +323,18 @@ class TestOperator(unittest.TestCase):
             lambda o: Operator(symbol=o.symbol, signature=o.signature)
         )
     )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_hash_equals(self, operator1, operator2):
         """Test that when two objects are equal their hashes are equal."""
         self.assertEqual(operator1, operator2)
         self.assertEqual(hash(operator1), hash(operator2))
 
     @given(default_operators())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_operator_pickle(self, operator1):
         """Test that an Operator inctance can be pickled and unpickled using
         the default protocol.
@@ -323,6 +369,9 @@ class TestOperator(unittest.TestCase):
         ),
         default_operators()
     )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_operator_call_returns_expected_call_object(
         self, target1, args1, operator1
     ):
@@ -337,10 +386,15 @@ class TestOperator(unittest.TestCase):
 
 
 class TestOperatorTable(unittest.TestCase):
+    BUFFER_SIZE = 8192 * 4
+    SUPPRESSED_HEALTH_CHECKS = (HealthCheck.too_slow,)
 
     @given(
         st.shared(default_operator_tables(), key='test_ot_equals_reflexive'),
         st.shared(default_operator_tables(), key='test_ot_equals_reflexive')
+    )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
     )
     def test_equals_reflexive(self, table1, table2):
         """Test that an object equals itself."""
@@ -348,6 +402,9 @@ class TestOperatorTable(unittest.TestCase):
         self.assertEqual(table1, table2)
 
     @given(st.data())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_equals_symmetric(self, data):
         """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
         d = data.draw(distinct_operator_tables(
@@ -373,6 +430,9 @@ class TestOperatorTable(unittest.TestCase):
             lambda t: OperatorTable(operators=t.operators)
         )
     )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_equals_transitive(self, table1, table2, table3):
         """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
         self.assertEqual(table1, table2)
@@ -380,6 +440,9 @@ class TestOperatorTable(unittest.TestCase):
         self.assertEqual(table1, table3)
 
     @given(st.data())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_equals_consistent(self, data):
         """Test that repeated equals calls return the same value."""
         d = data.draw(distinct_operator_tables(
@@ -399,6 +462,9 @@ class TestOperatorTable(unittest.TestCase):
         self.assertNotEqual(table1, another_table)
 
     @given(default_operator_tables())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_hash_consistent(self, table1):
         """Test that repeated hash calls yield the same value."""
         hash1 = hash(table1)
@@ -413,12 +479,18 @@ class TestOperatorTable(unittest.TestCase):
             lambda t: OperatorTable(operators=t.operators)
         )
     )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_hash_equals(self, table1, table2):
         """Test that when two objects are equal their hashes are equal."""
         self.assertEqual(hash(table1), hash(table2))
         self.assertEqual(table1, table2)
 
     @given(default_operator_tables())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_operator_table_pickle(self, table1):
         """Test that an OperatorTable instance can be pickled and unpickled using
         the default protocol.
@@ -833,6 +905,9 @@ class TestOperatorTable(unittest.TestCase):
         )
 
     @given(default_operator_tables())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_operator_table_iter(self, table1):
         """Test that an iterator over an OperatorTable yields the same items as
         an iterator over its *operators* attribute.

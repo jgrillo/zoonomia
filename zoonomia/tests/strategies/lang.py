@@ -5,7 +5,6 @@ use in Hypothesis tests.
 """
 
 import hypothesis.strategies as st
-from hypothesis import settings
 
 from zoonomia.lang import Symbol, Call, Operator, OperatorTable
 

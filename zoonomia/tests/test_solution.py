@@ -353,14 +353,11 @@ class TestFitness(unittest.TestCase):
 
 class TestSolution(unittest.TestCase):
 
-    pool = None
-
     def setUp(self):
         self.pool = ThreadPoolExecutor(max_workers=100)
 
-    def tearDownClass(self):
+    def tearDown(self):
         self.pool.shutdown()
-        self.pool = None
 
     def futures_map(self, fn, iterable):
         return self.pool.map(fn, iterable)
