@@ -29,7 +29,7 @@ class Objective(object):
         """
         self.eval_func = eval_func
         self.weight = weight
-        self._hash = hash((self.eval_func, self.weight))
+        self._hash = hash(('Objective', self.eval_func, self.weight))
 
     def __getstate__(self):
         return {'eval_func': self.eval_func, 'weight': self.weight}
@@ -90,7 +90,7 @@ class Fitness(object):
         """
         self.score = score
         self.objective = objective
-        self._hash = hash((self.score, self.objective))
+        self._hash = hash(('Fitness', self.score, self.objective))
 
     def __getstate__(self):
         return {'score': self.score, 'objective': self.objective}
@@ -211,9 +211,9 @@ class Solution(object):  # FIXME: should fitnesses be futures?
                         ordered_fitnesses[idx] = fitness
 
                     self.fitnesses = tuple(ordered_fitnesses)
-                    self._hash = hash(
-                        (self.tree, self.fitnesses, self.objectives)
-                    )
+                    self._hash = hash((
+                        'Solution', self.tree, self.fitnesses, self.objectives
+                    ))
         # TODO: asynchronize by making _fitnesses a generator?
         return self.fitnesses
 

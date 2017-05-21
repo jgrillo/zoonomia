@@ -391,8 +391,8 @@ class TestRampedHalfAndHalf(unittest.TestCase):
         )
 
         self.assertEqual(len(depth_counts.keys()), max_depth)
-        self.assertEqual(sorted(depth_counts.keys())[0], 1)
-        self.assertEqual(sorted(depth_counts.keys())[-1], max_depth)
+        self.assertEqual(tuple(sorted(depth_counts.keys()))[0], 1)
+        self.assertEqual(tuple(sorted(depth_counts.keys()))[-1], max_depth)
 
     def test_random_depth_counts_depth_1(self):
         """Test that random_depth_counts returns a histogram {n: 1} when

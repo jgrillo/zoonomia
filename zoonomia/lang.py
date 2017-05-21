@@ -24,7 +24,7 @@ class Symbol(object):
         """
         self.name = name
         self.dtype = dtype
-        self._hash = hash((self.name, self.dtype))
+        self._hash = hash(('Symbol', self.name, self.dtype))
 
     def __getstate__(self):
         return {'name': self.name, 'dtype': self.dtype}
@@ -74,7 +74,7 @@ class Operator(object):
         self.symbol = symbol
         self.signature = signature
         self.dtype = symbol.dtype
-        self._hash = hash((self.symbol, self.signature, self.dtype))
+        self._hash = hash(('Operator', self.symbol, self.signature, self.dtype))
 
     def __getstate__(self):
         return {'symbol': self.symbol, 'signature': self.signature}
@@ -182,9 +182,14 @@ class Call(object):
         self.symbol = operator.symbol
         self.operator = operator
         self.args = args
-        self._hash = hash(
-            (self.target, self.dtype, self.symbol, self.operator, self.args)
-        )
+        self._hash = hash((
+            'Call',
+            self.target,
+            self.dtype,
+            self.symbol,
+            self.operator,
+            self.args
+        ))
 
     def __getstate__(self):
         return {

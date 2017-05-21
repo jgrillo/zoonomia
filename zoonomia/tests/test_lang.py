@@ -942,5 +942,5 @@ class TestOperatorTable(unittest.TestCase):
 
         """
         self.assertSequenceEqual(
-            table1.operators, iter(table1), seq_type=frozenset
+            table1.operators, frozenset(iter(table1)), seq_type=frozenset
         )

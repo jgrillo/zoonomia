@@ -76,7 +76,7 @@ class Type(object):
         """
         self.name = name
         self.meta = meta
-        self._hash = hash((self.name, self.meta))
+        self._hash = hash(('Type', self.name, self.meta))
         self._cache = set()
         self._lock = RLock()
 
@@ -126,6 +126,8 @@ class Type(object):
                 if self == candidate:
                     self._cache.add(candidate)
                     return True
+                else:
+                    return False
             elif isinstance(candidate, (ParametrizedType, GenericType)):
                 return False
             else:
@@ -171,15 +173,27 @@ class ParametrizedType(object):
             Some (optional) metadata to associate with this type.
 
         :type meta: object
+        
+        :raises TypeError: if :param:`parameter_types` has length < 1.
 
         """
         self.name = name
         self.base_type = base_type
+
+        if len(parameter_types) < 1:
+            raise TypeError(
+                'Cannot construct a ParametrizedType with empty parameter_types'
+            )
+
         self.parameter_types = parameter_types
         self.meta = meta
-        self._hash = hash(
-            (self.name, self.base_type, self.parameter_types, self.meta)
-        )
+        self._hash = hash((
+            'ParametrizedType',
+            self.name,
+            self.base_type,
+            self.parameter_types,
+            self.meta
+        ))
         self._cache = set()
         self._lock = RLock()
 
@@ -244,12 +258,15 @@ class ParametrizedType(object):
                 elif (
                     candidate.base_type in self.base_type and
                     len(candidate.parameter_types) == len(self.parameter_types)
-                    and all(c in t for (c, t) in zip(
-                        candidate.parameter_types, self.parameter_types
-                    ))
+                    and len(candidate.parameter_types) > 0
                 ):
-                    self._cache.add(candidate)
-                    return True
+                    if all(c in t for c, t in zip(
+                        candidate.parameter_types, self.parameter_types
+                    )):
+                        self._cache.add(candidate)
+                        return True
+                    else:
+                        return False
                 else:
                     return False
             elif isinstance(candidate, (Type, GenericType)):
@@ -288,8 +305,7 @@ class GenericType(object):
 
         :param contained_types:
             The set of possible types that this GenericType can be resolved to.
-            This parameter is prohibited if either *base_type* or
-            *parameter_types* is present.
+            There must be at least one contained type.
 
         :type contained_types: frozenset(Type|GenericType)
 
@@ -297,12 +313,22 @@ class GenericType(object):
             Some (optional) metadata to associate with this type.
 
         :type meta: object
+        
+        :raises TypeError: if :param:`contained_types` has length < 1.
 
         """
         self.name = name
+
+        if len(contained_types) < 1:
+            raise TypeError(
+                'Cannot construct GenericType with empty contained_types'
+            )
+
         self.contained_types = contained_types
         self.meta = meta
-        self._hash = hash((self.name, self.contained_types, self.meta))
+        self._hash = hash(
+            ('GenericType', self.name, self.contained_types, self.meta)
+        )
         self._cache = set()
         self._lock = RLock()
 
@@ -357,10 +383,14 @@ class GenericType(object):
                 if any(candidate in t for t in self.contained_types):
                     self._cache.add(candidate)
                     return True
+                else:
+                    return False
             elif isinstance(candidate, ParametrizedType):
                 if candidate.base_type in self:
                     self._cache.add(candidate)
                     return True
+                else:
+                    return False
             elif isinstance(candidate, GenericType):
                 if candidate == self:
                     self._cache.add(candidate)
@@ -369,7 +399,11 @@ class GenericType(object):
                     if any(candidate in t for t in self.contained_types):
                         self._cache.add(candidate)
                         return True
-                    elif all(t in self for t in candidate.contained_types):
+                    elif (
+                        len(candidate.contained_types) > 0 and all(
+                            t in self for t in candidate.contained_types
+                        )
+                    ):
                         self._cache.add(candidate)
                         return True
                     else:

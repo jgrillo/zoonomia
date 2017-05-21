@@ -3,7 +3,7 @@ import unittest
 
 import hypothesis.strategies as st
 
-from hypothesis import given
+from hypothesis import given, settings, HealthCheck
 
 from zoonomia.types import Type, ParametrizedType, GenericType
 
@@ -14,6 +14,8 @@ from zoonomia.tests.strategies.types import (
 
 
 class TestType(unittest.TestCase):
+    BUFFER_SIZE = 8192 * 4
+    SUPPRESSED_HEALTH_CHECKS = (HealthCheck.too_slow,)
 
     @given(
         st.shared(default_types(), key='test_type_equals_reflexive'),
@@ -135,6 +137,9 @@ class TestType(unittest.TestCase):
         self.assertNotIn(another_type, type1)
 
     @given(default_parametrized_types(), default_types())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_type_contains__returns_False_when_ParametrizedType(
         self, ptype1, type1
     ):
@@ -142,6 +147,9 @@ class TestType(unittest.TestCase):
         self.assertNotIn(ptype1, type1)
 
     @given(default_generic_types(), default_types())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_type_contains__returns_False_when_GenericType(self, gtype1, type1):
         """Test that a Type does not contain a GenericType."""
         self.assertNotIn(gtype1, type1)
@@ -159,10 +167,15 @@ class TestType(unittest.TestCase):
 
 
 class TestParametrizedType(unittest.TestCase):
+    BUFFER_SIZE = 8192 * 4
+    SUPPRESSED_HEALTH_CHECKS = (HealthCheck.too_slow,)
 
     @given(
         st.shared(default_parametrized_types(), key='test_pt_eq_reflexive'),
         st.shared(default_parametrized_types(), key='test_pt_eq_reflexive')
+    )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
     )
     def test_equals_reflexive(self, ptype1, ptype2):
         """Test that an object equals itself."""
@@ -170,6 +183,9 @@ class TestParametrizedType(unittest.TestCase):
         self.assertEqual(ptype1, ptype2)
 
     @given(st.data())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_equals_symmetric(self, data):
         """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
         d = data.draw(distinct_parametrized_types(
@@ -210,6 +226,9 @@ class TestParametrizedType(unittest.TestCase):
             parameter_types=t.parameter_types
         ))
     )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_equals_transitive(self, ptype1, ptype2, ptype3):
         """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
         self.assertEqual(ptype1, ptype2)
@@ -217,6 +236,9 @@ class TestParametrizedType(unittest.TestCase):
         self.assertEqual(ptype1, ptype3)
 
     @given(st.data())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_equals_consistent(self, data):
         """Test that repeated equals calls return the same value."""
         d = data.draw(distinct_parametrized_types(
@@ -241,6 +263,9 @@ class TestParametrizedType(unittest.TestCase):
         self.assertNotEqual(ptype1, another_ptype)
 
     @given(default_parametrized_types())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_hash_consistent(self, ptype1):
         """Test that repeated hash calls yield the same value."""
         hash1 = hash(ptype1)
@@ -260,12 +285,18 @@ class TestParametrizedType(unittest.TestCase):
             parameter_types=t.parameter_types
         ))
     )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_hash_equals(self, ptype1, ptype2):
         """Test that when two objects are equal their hashes are equal."""
         self.assertEqual(ptype1, ptype2)
         self.assertEqual(hash(ptype1), hash(ptype2))
 
     @given(default_parametrized_types())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_parametrized_type_pickle(self, ptype1):
         """Test that a ParametrizedType instance can be pickled and unpickled
         using the 0 protocol and the -1 protocol.
@@ -294,6 +325,9 @@ class TestParametrizedType(unittest.TestCase):
             parameter_types=t.parameter_types
         ))
     )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_parametrized_type_contains_when_equal(self, ptype1, ptype2):
         """Test that a ParametrizedType contains another ParametrizedType when
         the two types are equal.
@@ -304,6 +338,9 @@ class TestParametrizedType(unittest.TestCase):
         self.assertIn(ptype2, ptype1)
 
     @given(st.data())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_parametrized_type_not_contains_when_ptypes_ne(self, data):
         """Test that a ParametrizedType does not contain another
         ParametrizedType *candidate* when the two parametrized types are
@@ -318,6 +355,19 @@ class TestParametrizedType(unittest.TestCase):
 
         self.assertNotIn(ptype1, another_ptype)
         self.assertNotIn(another_ptype, ptype1)
+
+    def test_parametrized_type_raises_TypeError_when_ptypes_empty(self):
+        """Test that a ParametrizedType raises TypeError when constructued with 
+        an empty parameter_types param.
+
+        """
+        base_type = Type(name='type1', meta='meta1')
+        self.assertRaises(
+            TypeError,
+            ParametrizedType,
+            (),
+            {'name': 'test', 'base_type': base_type, 'parameter_types': ()}
+        )
 
     def test_parametrized_type_contains_when_all_parameter_types_in_1(self):
         """Test that a ParametrizedType contains another ParametrizedType
@@ -661,11 +711,17 @@ class TestParametrizedType(unittest.TestCase):
         )
 
     @given(default_types(), default_parametrized_types())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_parametrized_type_does_not_contain_Type(self, type1, ptype1):
         """Test that a ParametrizedType does not contain a Type"""
         self.assertNotIn(type1, ptype1)
 
     @given(default_generic_types(), default_parametrized_types())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_parametrized_type_does_not_contain_GenericType(
         self, gtype1, ptype1
     ):
@@ -676,6 +732,9 @@ class TestParametrizedType(unittest.TestCase):
         default_parametrized_types(),
         st.text() | st.integers() | st.none() | st.booleans() | st.floats()
     )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_parametrized_type_contains_raises_TypeError(self, ptype1, junk):
         """Test that a ParametrizedType does not implement __contains__ for
         arbitrary candidates.
@@ -685,10 +744,15 @@ class TestParametrizedType(unittest.TestCase):
 
 
 class TestGenericType(unittest.TestCase):
+    BUFFER_SIZE = 8192 * 4
+    SUPPRESSED_HEALTH_CHECKS = (HealthCheck.too_slow,)
 
     @given(
         st.shared(default_generic_types(), key='test_gt_eq_reflexive'),
         st.shared(default_generic_types(), key='test_gt_eq_reflexive')
+    )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
     )
     def test_equals_reflexive(self, gtype1, gtype2):
         """Test that an object equals itself."""
@@ -696,6 +760,9 @@ class TestGenericType(unittest.TestCase):
         self.assertEqual(gtype1, gtype2)
 
     @given(st.data())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_equals_symmetric(self, data):
         """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
         d = data.draw(distinct_generic_types(
@@ -733,6 +800,9 @@ class TestGenericType(unittest.TestCase):
             )
         )
     )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_equals_transitive(self, gtype1, gtype2, gtype3):
         """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
         self.assertEqual(gtype1, gtype2)
@@ -740,6 +810,9 @@ class TestGenericType(unittest.TestCase):
         self.assertEqual(gtype1, gtype3)
 
     @given(st.data())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_equals_consistent(self, data):
         """Test that repeated equals calls return the same value."""
         d = data.draw(distinct_generic_types(
@@ -763,6 +836,9 @@ class TestGenericType(unittest.TestCase):
         self.assertNotEqual(gtype1, another_gtype)
 
     @given(default_generic_types())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_hash_consistent(self, gtype1):
         """Test that repeated hash calls yield the same value."""
         hash1 = hash(gtype1)
@@ -781,12 +857,18 @@ class TestGenericType(unittest.TestCase):
             )
         )
     )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_hash_equals(self, gtype1, gtype2):
         """Test that when two objects are equal their hashes are equal."""
         self.assertEqual(gtype1, gtype2)
         self.assertEqual(hash(gtype1), hash(gtype2))
 
     @given(default_parametrized_types())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_generic_type_pickle(self, gtype1):
         """Test that a GenericType instance can be pickled and unpickled using
         the 0 protocol and the -1 protocol.
@@ -814,6 +896,9 @@ class TestGenericType(unittest.TestCase):
             )
         )
     )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_generic_type_contains_equal_generic_type(self, gtype1, gtype2):
         """Test that a GenericType contains another GenericType if the two
         GenericTypes are equal.
@@ -825,6 +910,9 @@ class TestGenericType(unittest.TestCase):
         self.assertIn(gtype1, gtype2)
 
     @given(st.data())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_generic_type_not_contains_unequal_generic_type(self, data):
         """Test that a GenericType does not contain another GenericType if the
         two GenericTypes are unequal.
@@ -1022,3 +1110,15 @@ class TestGenericType(unittest.TestCase):
 
         self.assertNotIn(generic_type_1, generic_type_2)
         self.assertNotIn(generic_type_2, generic_type_1)
+
+    def test_generic_type_raises_TypeError_when_contained_types_empty(self):
+        """Test that GenericType raises TypeError when constructed with empty
+         contained_types param.
+
+        """
+        self.assertRaises(
+            TypeError,
+            GenericType,
+            (),
+            {'name': 'gtype1', 'meta': 'meta1', 'contained_types': frozenset()}
+        )

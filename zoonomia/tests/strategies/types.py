@@ -86,7 +86,7 @@ def distinct_types(distinct_ts):
     ))
 
 
-def contained_types(contained_ts, min_size=0, max_size=5):
+def contained_types(contained_ts, min_size=1, max_size=5):
     """Build a strategy representing the contained types of a
     :class:`zoonomia.types.GenericType`.
 
@@ -186,7 +186,7 @@ def distinct_generic_types(generic_ts):
     ))
 
 
-def parameter_types(parameter_ts, min_size=0, max_size=5):
+def parameter_types(parameter_ts, min_size=1, max_size=5):
     """Build a strategy of :class:`zoonomia.types.Type` and
     :class:`zoonomia.types.GenericType` instances which represent parameter
     types for :class:`zoonomia.types.ParametrizedType`.
@@ -219,12 +219,9 @@ def default_parameter_types():
         parameter_ts=generic_types(
             name_ts=name_types(),
             meta_ts=meta_types(),
-            contained_ts=contained_types(
-                contained_ts=types(
-                    name_ts=name_types(), meta_ts=meta_types()
-                )
-            )
-        ) | types(name_ts=name_types(), meta_ts=meta_types()))
+            contained_ts=contained_types(contained_ts=default_types())
+        ) | default_types()
+    )
 
 
 def parametrized_types(name_ts, meta_ts, base_ts, parameter_ts):

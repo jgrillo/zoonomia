@@ -422,5 +422,5 @@ def _random_depth_counts(max_depth, population_size, rng):
     # *population_size* individuals.
     counts = {d + 1: 0 for d in range(max_depth)}
     for _ in range(population_size):
-        counts[rng.choice(counts.keys())] += 1
+        counts[rng.choice(tuple(counts.keys()))] += 1
     return counts

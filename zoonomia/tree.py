@@ -182,9 +182,9 @@ class Node(object):
         :rtype: int
 
         """
-        return hash(
-            (self.operator, hash(self.left), hash(self.right), self.depth)
-        )
+        return hash((
+            'Node', self.operator, hash(self.left), hash(self.right), self.depth
+        ))
 
     def __eq__(self, other):
         return (
@@ -389,7 +389,7 @@ class Tree(object):
             with self._lock:
                 if self._hash is None:
                     hashes = tuple(hash(node) for node in self)
-                    self._hash = hash(hashes)
+                    self._hash = hash(('Tree', hashes))
         return self._hash
 
     def __eq__(self, other):
