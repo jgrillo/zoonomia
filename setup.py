@@ -1,11 +1,8 @@
 import os
-import sys
 
 from setuptools import setup
 
 HERE = os.path.abspath(os.path.dirname(__file__))
-NEEDS_PYTEST = {'pytest', 'test', 'ptr'}.intersection(sys.argv)
-PYTEST_RUNNER = ['pytest-runner'] if NEEDS_PYTEST else []
 
 
 def not_comment(line):
@@ -63,6 +60,5 @@ setup(
     ),
     install_requires=REQUIREMENTS,
     tests_require=REQUIREMENTS_TEST,
-    setup_requires=PYTEST_RUNNER,
     zip_safe=False
 )
