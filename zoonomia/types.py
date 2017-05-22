@@ -52,12 +52,10 @@ type *Collection<Number>*, or even values of type *Collection<Int>*!
 
 """
 
-from threading import RLock
-
 
 class Type(object):
 
-    __slots__ = ('name', 'meta', '_hash', '_cache', '_lock')
+    __slots__ = ('name', 'meta', '_hash', '_cache')
 
     def __init__(self, name, meta=None):
         """A Type instance represents a base type in Zoonomia's type system. A
@@ -78,7 +76,6 @@ class Type(object):
         self.meta = meta
         self._hash = hash(('Type', self.name, self.meta))
         self._cache = set()
-        self._lock = RLock()
 
     def __getstate__(self):
         return {'name': self.name, 'meta': self.meta}
@@ -119,22 +116,22 @@ class Type(object):
         :rtype: bool
 
         """
-        with self._lock:
-            if candidate in self._cache:
+        # don't need to lock because _cache is a dict and add() is atomic
+        if candidate in self._cache:
+            return True
+        elif isinstance(candidate, Type):
+            if self == candidate:
+                self._cache.add(candidate)
                 return True
-            elif isinstance(candidate, Type):
-                if self == candidate:
-                    self._cache.add(candidate)
-                    return True
-                else:
-                    return False
-            elif isinstance(candidate, (ParametrizedType, GenericType)):
-                return False
             else:
-                raise TypeError(
-                    'candidate must be a Type, GenericType, '
-                    'or ParametrizedType: {0}'.format(repr(candidate))
-                )
+                return False
+        elif isinstance(candidate, (ParametrizedType, GenericType)):
+            return False
+        else:
+            raise TypeError(
+                'candidate must be a Type, GenericType, '
+                'or ParametrizedType: {0}'.format(repr(candidate))
+            )
 
     def __repr__(self):
         return 'Type(name={name}, meta={meta})'.format(
@@ -145,8 +142,7 @@ class Type(object):
 class ParametrizedType(object):
 
     __slots__ = (
-        'name', 'base_type', 'parameter_types', 'meta', '_hash', '_cache',
-        '_lock'
+        'name', 'base_type', 'parameter_types', 'meta', '_hash', '_cache'
     )
 
     def __init__(self, name, base_type, parameter_types, meta=None):
@@ -195,7 +191,6 @@ class ParametrizedType(object):
             self.meta
         ))
         self._cache = set()
-        self._lock = RLock()
 
     def __getstate__(self):
         return {
@@ -248,34 +243,34 @@ class ParametrizedType(object):
         :rtype: bool
 
         """
-        with self._lock:
-            if candidate in self._cache:
+        # don't need to lock because _cache is a dict and add() is atomic
+        if candidate in self._cache:
+            return True
+        elif isinstance(candidate, ParametrizedType):
+            if candidate == self:
+                self._cache.add(candidate)
                 return True
-            elif isinstance(candidate, ParametrizedType):
-                if candidate == self:
+            elif (
+                candidate.base_type in self.base_type and
+                len(candidate.parameter_types) == len(self.parameter_types)
+                and len(candidate.parameter_types) > 0
+            ):
+                if all(c in t for c, t in zip(
+                    candidate.parameter_types, self.parameter_types
+                )):
                     self._cache.add(candidate)
                     return True
-                elif (
-                    candidate.base_type in self.base_type and
-                    len(candidate.parameter_types) == len(self.parameter_types)
-                    and len(candidate.parameter_types) > 0
-                ):
-                    if all(c in t for c, t in zip(
-                        candidate.parameter_types, self.parameter_types
-                    )):
-                        self._cache.add(candidate)
-                        return True
-                    else:
-                        return False
                 else:
                     return False
-            elif isinstance(candidate, (Type, GenericType)):
-                return False
             else:
-                raise TypeError(
-                    'candidate must be a Type, GenericType, '
-                    'or ParametrizedType: {0}'.format(repr(candidate))
-                )
+                return False
+        elif isinstance(candidate, (Type, GenericType)):
+            return False
+        else:
+            raise TypeError(
+                'candidate must be a Type, GenericType, '
+                'or ParametrizedType: {0}'.format(repr(candidate))
+            )
 
     def __repr__(self):
         return (
@@ -291,7 +286,7 @@ class ParametrizedType(object):
 
 class GenericType(object):
 
-    __slots__ = ('name', 'contained_types', 'meta', '_hash', '_cache', '_lock')
+    __slots__ = ('name', 'contained_types', 'meta', '_hash', '_cache')
 
     def __init__(self, name, contained_types, meta=None):
         """A generic type is constructed with a name and a frozenset of
@@ -330,7 +325,6 @@ class GenericType(object):
             ('GenericType', self.name, self.contained_types, self.meta)
         )
         self._cache = set()
-        self._lock = RLock()
 
     def __getstate__(self):
         return {
@@ -376,43 +370,43 @@ class GenericType(object):
         :rtype: bool
 
         """
-        with self._lock:
-            if candidate in self._cache:
+        # don't need to lock because _cache is a dict and add() is atomic
+        if candidate in self._cache:
+            return True
+        elif isinstance(candidate, Type):
+            if any(candidate in t for t in self.contained_types):
+                self._cache.add(candidate)
                 return True
-            elif isinstance(candidate, Type):
+            else:
+                return False
+        elif isinstance(candidate, ParametrizedType):
+            if candidate.base_type in self:
+                self._cache.add(candidate)
+                return True
+            else:
+                return False
+        elif isinstance(candidate, GenericType):
+            if candidate == self:
+                self._cache.add(candidate)
+                return True
+            else:
                 if any(candidate in t for t in self.contained_types):
                     self._cache.add(candidate)
                     return True
-                else:
-                    return False
-            elif isinstance(candidate, ParametrizedType):
-                if candidate.base_type in self:
+                elif (
+                    len(candidate.contained_types) > 0 and all(
+                        t in self for t in candidate.contained_types
+                    )
+                ):
                     self._cache.add(candidate)
                     return True
                 else:
                     return False
-            elif isinstance(candidate, GenericType):
-                if candidate == self:
-                    self._cache.add(candidate)
-                    return True
-                else:
-                    if any(candidate in t for t in self.contained_types):
-                        self._cache.add(candidate)
-                        return True
-                    elif (
-                        len(candidate.contained_types) > 0 and all(
-                            t in self for t in candidate.contained_types
-                        )
-                    ):
-                        self._cache.add(candidate)
-                        return True
-                    else:
-                        return False
-            else:
-                raise TypeError(
-                    'candidate must be a Type, GenericType, or '
-                    'ParametrizedType: {0}'.format(repr(candidate))
-                )
+        else:
+            raise TypeError(
+                'candidate must be a Type, GenericType, or '
+                'ParametrizedType: {0}'.format(repr(candidate))
+            )
 
     def __repr__(self):
         return (
