@@ -909,24 +909,6 @@ class TestGenericType(unittest.TestCase):
         self.assertIn(gtype1, gtype2)
         self.assertIn(gtype1, gtype2)
 
-    @given(st.data())
-    @settings(
-        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
-    )
-    def test_generic_type_not_contains_unequal_generic_type(self, data):
-        """Test that a GenericType does not contain another GenericType if the
-        two GenericTypes are unequal.
-
-        """
-        d = data.draw(distinct_generic_types(
-            generic_ts=default_generic_types()
-        ))
-        gtype1 = d['type1']
-        another_gtype = d['another_type']
-
-        self.assertNotIn(gtype1, another_gtype)
-        self.assertNotIn(another_gtype, gtype1)
-
     def test_generic_type_contains_Type(self):
         """Test that a GenericType contains a Type when the Type is contained
         by any of the GenericType's *contained_types*.

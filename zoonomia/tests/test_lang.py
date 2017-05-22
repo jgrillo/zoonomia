@@ -19,10 +19,15 @@ from zoonomia.tests.strategies.lang import (
 
 
 class TestSymbol(unittest.TestCase):
+    BUFFER_SIZE = 8192 * 4
+    SUPPRESSED_HEALTH_CHECKS = (HealthCheck.too_slow,)
 
     @given(
         st.shared(default_symbols(), key='test_symbol_equals_reflexive'),
         st.shared(default_symbols(), key='test_symbol_equals_reflexive')
+    )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
     )
     def test_equals_reflexive(self, symbol1, symbol2):
         """Test that an object equals itself."""
@@ -30,6 +35,9 @@ class TestSymbol(unittest.TestCase):
         self.assertEqual(symbol1, symbol2)
 
     @given(st.data())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_equals_symmetric(self, data):
         """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
         d = data.draw(distinct_symbols(symbol_ts=default_symbols()))
@@ -53,6 +61,9 @@ class TestSymbol(unittest.TestCase):
             lambda s: Symbol(name=s.name, dtype=s.dtype)
         )
     )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_equals_transitive(self, symbol1, symbol2, symbol3):
         """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
         self.assertEqual(symbol1, symbol2)
@@ -60,6 +71,9 @@ class TestSymbol(unittest.TestCase):
         self.assertEqual(symbol1, symbol3)
 
     @given(st.data())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_equals_consistent(self, data):
         """Test that repeated equals calls return the same value."""
         d = data.draw(distinct_symbols(symbol_ts=default_symbols()))
@@ -77,6 +91,9 @@ class TestSymbol(unittest.TestCase):
         self.assertNotEqual(symbol1, another_symbol)
 
     @given(default_symbols())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_hash_consistent(self, symbol1):
         """Test that repeated hash calls yield the same value."""
         hash1 = hash(symbol1)
@@ -91,12 +108,18 @@ class TestSymbol(unittest.TestCase):
             lambda s: Symbol(name=s.name, dtype=s.dtype)
         )
     )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_hash_equals(self, symbol1, symbol2):
         """Test that when two objects are equal their hashes are equal."""
         self.assertEqual(symbol1, symbol2)
         self.assertEqual(hash(symbol1), hash(symbol2))
 
     @given(default_symbols())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
     def test_symbol_pickle(self, symbol1):
         """Test that a Symbol instance can be pickled and unpickled using the
         0 protocol and the -1 protocol.
@@ -393,7 +416,7 @@ class TestOperator(unittest.TestCase):
     @settings(
         buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
     )
-    def test_operator_call_returns_expected_call_object(
+    def test_operator_call_returns_expected_call_object(  # FIXME: bad data
         self, target1, args1, operator1
     ):
         """Test that calling a basis operator like a function produces the
