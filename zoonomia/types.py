@@ -1,8 +1,7 @@
-"""This module defines Zoonomia's type system. There are three main characters:
+"""This module defines Zoonomia's type system. There are two main characters:
 
-    1. *Type* -- the base type.
+    1. *Type* -- a parameter-less generic type.
     2. *ParametrizedType* -- a parametrized generic type.
-    3. *GenericType* -- a parameter-less generic type.
 
 Some terminology:
 
@@ -11,8 +10,8 @@ Some terminology:
     2. We say type C is *more general than* type D if type D cannot contain
     type C.
 
-*GenericType* is the most general kind of type. It subsumes *ParametrizedType*
-and *Type*. Given this hierarchy of generics, we can construct a parametrized
+*Type* is the most general kind of type. It subsumes *ParametrizedType*. Given
+this hierarchy of generics, we can construct a parametrized
 *collection_of_numbers* generic like this:
 
 .. code-block:: python
@@ -20,7 +19,7 @@ and *Type*. Given this hierarchy of generics, we can construct a parametrized
 
     float_type = Type(name='Float')
 
-    number_type = GenericType(
+    number_type = Type(
         name='Number', contained_types=(int_type, float_type)
     )
 
@@ -28,7 +27,7 @@ and *Type*. Given this hierarchy of generics, we can construct a parametrized
 
     set_type = Type(name='Set')
 
-    collection_type = GenericType(
+    collection_type = Type(
         name='Collection', contained_types=frozenset((list_type, set_type))
     )
 
@@ -56,42 +55,61 @@ from threading import RLock
 
 
 class Type(object):
+    __slots__ = ('name', 'contained_types', 'meta', '_hash', '_cache', '_lock')
 
-    __slots__ = ('name', 'meta', '_hash', '_cache', '_lock')
-
-    def __init__(self, name, meta=None):
-        """A Type instance represents a base type in Zoonomia's type system. A
-        Type is distinguished from other Types by its name and metadata.
+    def __init__(self, name, contained_types=frozenset(), meta=None):
+        """A generic type is constructed with a name and a frozenset of
+        *contained_types*. The *contained_types* represent the set of possible
+        types to which this generic can be resolved.
 
         :param name:
             The name of this type.
 
         :type name: str
 
+        :param contained_types:
+            The set of possible types that this Type can be resolved to. There
+            must be at least one contained type.
+
+        :type contained_types: frozenset(Type)
+
         :param meta:
             Some (optional) metadata to associate with this type.
 
         :type meta: object
 
+        :raises TypeError: if :param:`contained_types` has length < 1.
+
         """
         self.name = name
+        self.contained_types = contained_types
         self.meta = meta
-        self._hash = hash(('Type', self.name, self.meta))
+        self._hash = hash(
+            ('Type', self.name, self.contained_types, self.meta)
+        )
         self._cache = set()
         self._lock = RLock()
 
     def __getstate__(self):
-        return {'name': self.name, 'meta': self.meta}
+        return {
+            'name': self.name,
+            'contained_types': self.contained_types,
+            'meta': self.meta
+        }
 
     def __setstate__(self, state):
-        self.__init__(state['name'], state['meta'])
+        self.__init__(state['name'], state['contained_types'], state['meta'])
 
     def __hash__(self):
         return self._hash
 
     def __eq__(self, other):
         if isinstance(other, Type):
-            return self.name == other.name and self.meta == other.meta
+            return (
+                self.name == other.name and
+                self.contained_types == other.contained_types and
+                self.meta == other.meta
+            )
         else:
             return False
 
@@ -99,19 +117,19 @@ class Type(object):
         return not self.__eq__(other)
 
     def __contains__(self, candidate):
-        """Check whether this type can be resolved to the candidate type.
+        """Check whether this type can be resolved to a type *candidate*.
 
         :param candidate:
             A candidate type.
 
-        :type candidate: Type or GenericType or ParametrizedType
+        :type candidate: Type | ParametrizedType
 
         :raise TypeError:
-            if *candidate* is not a Type, GenericType, or ParametrizedType.
+            if *candidate* is not a Type or ParametrizedType.
 
         :return:
-            True if this type can be resolved to the candidate type, False
-            otherwise.
+            True if the candidate type belongs to this generic type (i.e. if
+            this type can be resolved to the candidate type), False otherwise.
 
         :rtype: bool
 
@@ -119,23 +137,43 @@ class Type(object):
         with self._lock:
             if candidate in self._cache:
                 return True
-            elif isinstance(candidate, Type):
-                if self == candidate:
+            elif isinstance(candidate, ParametrizedType):
+                if candidate.base_type in self:
                     self._cache.add(candidate)
                     return True
                 else:
                     return False
-            elif isinstance(candidate, (ParametrizedType, GenericType)):
-                return False
+            elif isinstance(candidate, Type):
+                if candidate == self:
+                    self._cache.add(candidate)
+                    return True
+                else:
+                    if any(candidate in t for t in self.contained_types):
+                        self._cache.add(candidate)
+                        return True
+                    elif (
+                        len(candidate.contained_types) > 0 and all(
+                            t in self for t in candidate.contained_types
+                        )
+                    ):
+                        self._cache.add(candidate)
+                        return True
+                    else:
+                        return False
             else:
                 raise TypeError(
-                    'candidate must be a Type, GenericType, '
-                    'or ParametrizedType: {0}'.format(repr(candidate))
+                    'candidate must be a Type or ParametrizedType: {0}'.format(
+                        repr(candidate)
+                    )
                 )
 
     def __repr__(self):
-        return 'Type(name={name}, meta={meta})'.format(
-            name=repr(self.name), meta=repr(self.meta)
+        return (
+            'Type(name={name}, contained_types={contained_types}, meta={meta})'
+        ).format(
+            name=repr(self.name),
+            contained_types=repr(self.contained_types),
+            meta=repr(self.meta)
         )
 
 
@@ -147,9 +185,9 @@ class ParametrizedType(object):
     )
 
     def __init__(self, name, base_type, parameter_types, meta=None):
-        """A ParametrizedType is constructed with a name, a GenericType or Type
-        *base_type*, a tuple[ParametrizedType|GenericType|Type]
-        *parameter_types*, and (optionally) some metadata.
+        """A ParametrizedType is constructed with a *name*, a Type *base_type*,
+        a tuple[ParametrizedType|Type] *parameter_types*, and (optionally) some
+        *metadata*.
 
         :param name:
             The name of this type.
@@ -159,12 +197,12 @@ class ParametrizedType(object):
         :param base_type:
             The base type of this generic.
 
-        :type base_type: GenericType or Type
+        :type base_type: Type
 
         :param parameter_types:
             The parameters of this generic.
 
-        :type parameter_types: tuple[ParametrizedType|GenericType|Type]
+        :type parameter_types: tuple[ParametrizedType|Type]
 
         :param meta:
             Some (optional) metadata to associate with this type.
@@ -233,10 +271,10 @@ class ParametrizedType(object):
         :param candidate:
             A candidate type.
 
-        :type candidate: Type or GenericType or ParametrizedType
+        :type candidate: Type | ParametrizedType
 
         :raise TypeError:
-            if *candidate* is not a Type, GenericType, or ParametrizedType.
+            if *candidate* is not a Type or ParametrizedType.
 
         :return:
             True if the candidate type belongs to this generic type (i.e. if
@@ -266,12 +304,13 @@ class ParametrizedType(object):
                         return False
                 else:
                     return False
-            elif isinstance(candidate, (Type, GenericType)):
+            elif isinstance(candidate, Type):
                 return False
             else:
                 raise TypeError(
-                    'candidate must be a Type, GenericType, '
-                    'or ParametrizedType: {0}'.format(repr(candidate))
+                    'candidate must be a Type or ParametrizedType: {0}'.format(
+                        repr(candidate)
+                    )
                 )
 
     def __repr__(self):
@@ -282,141 +321,5 @@ class ParametrizedType(object):
             name=repr(self.name),
             base_type=repr(self.base_type),
             parameter_types=repr(self.parameter_types),
-            meta=repr(self.meta)
-        )
-
-
-class GenericType(object):
-
-    __slots__ = ('name', 'contained_types', 'meta', '_hash', '_cache', '_lock')
-
-    def __init__(self, name, contained_types, meta=None):
-        """A generic type is constructed with a name and a frozenset of
-        *contained_types*. The *contained_types* represent the set of possible
-        types to which this generic can be resolved.
-
-        :param name:
-            The name of this type.
-
-        :type name: str
-
-        :param contained_types:
-            The set of possible types that this GenericType can be resolved to.
-            There must be at least one contained type.
-
-        :type contained_types: frozenset(Type|GenericType)
-
-        :param meta:
-            Some (optional) metadata to associate with this type.
-
-        :type meta: object
-        
-        :raises TypeError: if :param:`contained_types` has length < 1.
-
-        """
-        self.name = name
-
-        if len(contained_types) < 1:
-            raise TypeError(
-                'Cannot construct GenericType with empty contained_types'
-            )
-
-        self.contained_types = contained_types
-        self.meta = meta
-        self._hash = hash(
-            ('GenericType', self.name, self.contained_types, self.meta)
-        )
-        self._cache = set()
-        self._lock = RLock()
-
-    def __getstate__(self):
-        return {
-            'name': self.name,
-            'contained_types': self.contained_types,
-            'meta': self.meta
-        }
-
-    def __setstate__(self, state):
-        self.__init__(state['name'], state['contained_types'], state['meta'])
-
-    def __hash__(self):
-        return self._hash
-
-    def __eq__(self, other):
-        if isinstance(other, GenericType):
-            return (
-                self.name == other.name and
-                self.contained_types == other.contained_types and
-                self.meta == other.meta
-            )
-        else:
-            return False
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __contains__(self, candidate):
-        """Check whether this type can be resolved to a type *candidate*.
-
-        :param candidate:
-            A candidate type.
-
-        :type candidate: Type or GenericType or ParametrizedType
-
-        :raise TypeError:
-            if *candidate* is not a Type, GenericType, or ParametrizedType.
-
-        :return:
-            True if the candidate type belongs to this generic type (i.e. if
-            this type can be resolved to the candidate type), False otherwise.
-
-        :rtype: bool
-
-        """
-        with self._lock:
-            if candidate in self._cache:
-                return True
-            elif isinstance(candidate, Type):
-                if any(candidate in t for t in self.contained_types):
-                    self._cache.add(candidate)
-                    return True
-                else:
-                    return False
-            elif isinstance(candidate, ParametrizedType):
-                if candidate.base_type in self:
-                    self._cache.add(candidate)
-                    return True
-                else:
-                    return False
-            elif isinstance(candidate, GenericType):
-                if candidate == self:
-                    self._cache.add(candidate)
-                    return True
-                else:
-                    if any(candidate in t for t in self.contained_types):
-                        self._cache.add(candidate)
-                        return True
-                    elif (
-                        len(candidate.contained_types) > 0 and all(
-                            t in self for t in candidate.contained_types
-                        )
-                    ):
-                        self._cache.add(candidate)
-                        return True
-                    else:
-                        return False
-            else:
-                raise TypeError(
-                    'candidate must be a Type, GenericType, or '
-                    'ParametrizedType: {0}'.format(repr(candidate))
-                )
-
-    def __repr__(self):
-        return (
-            'GenericType(name={name}, contained_types={contained_types}, '
-            'meta={meta})'
-        ).format(
-            name=repr(self.name),
-            contained_types=repr(self.contained_types),
             meta=repr(self.meta)
         )

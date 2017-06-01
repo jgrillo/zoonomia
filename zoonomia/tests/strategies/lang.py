@@ -9,19 +9,18 @@ import hypothesis.strategies as st
 from zoonomia.lang import Symbol, Call, Operator, OperatorTable
 
 from zoonomia.tests.strategies.types import (
-    name_types, default_types, default_generic_types, default_parametrized_types
+    names, default_types, default_parametrized_types
 )
 
 
-def symbols(name_ts, dtype_ts):
+def symbols(names_strategy, dtype_ts):
     """Build a :class:`zoonomia.lang.Symbol` strategy.
 
-    :param name_ts: A text strategy representing type names.
-    :type name_ts: hypothesis.strategies.SearchStrategy
+    :param names_strategy: A text strategy representing type names.
+    :type names_strategy: hypothesis.strategies.SearchStrategy
 
     :param dtype_ts:
-        A strategy of :class:`zoonomia.types.Type`,
-        :class:`zoonomia.types.GenericType`, and
+        A strategy of :class:`zoonomia.types.Type` and
         :class:`zoonomia.types.ParametrizedType` instances.
 
     :type dtype_ts: hypothesis.strategies.SearchStrategy
@@ -30,7 +29,7 @@ def symbols(name_ts, dtype_ts):
     :rtype: hypothesis.strategies.SearchStrategy
 
     """
-    return st.builds(Symbol, **{'name': name_ts, 'dtype': dtype_ts})
+    return st.builds(Symbol, **{'name': names_strategy, 'dtype': dtype_ts})
 
 
 def default_symbols():
@@ -42,10 +41,8 @@ def default_symbols():
 
     """
     return symbols(
-        name_ts=name_types(),
-        dtype_ts=default_types()
-        | default_generic_types()
-        | default_parametrized_types()
+        names_strategy=names(),
+        dtype_ts=default_types() | default_parametrized_types()
     )
 
 
@@ -72,13 +69,11 @@ def distinct_symbols(symbol_ts):
 
 
 def signatures(parameter_ts, min_size=0, max_size=5):
-    """Build a strategy of tuples of :class:`zoonomia.types.Type`,
-    :class:`zoonomia.types.GenericType`, and
+    """Build a strategy of tuples of :class:`zoonomia.types.Type` and
     :class:`zoonomia.types.ParametrizedType` instances.
 
     :param parameter_ts:
-        A strategy of :class:`zoonomia.types.Type`,
-        :class:`zoonomia.types.GenericType`, and
+        A strategy of :class:`zoonomia.types.Type` and
         :class:`zoonomia.types.ParametrizedType` instances.
 
     :type parameter_ts: hypothesis.strategies.SearchStrategy
@@ -110,9 +105,7 @@ def default_signatures():
 
     """
     return signatures(
-        parameter_ts=default_types()
-        | default_generic_types()
-        | default_parametrized_types()
+        parameter_ts=default_types() | default_parametrized_types()
     )
 
 

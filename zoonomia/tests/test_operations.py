@@ -6,7 +6,7 @@ from hypothesis import given
 from hypothesis.strategies import integers, text, builds
 
 from zoonomia.lang import Symbol, Operator, OperatorTable
-from zoonomia.types import Type, GenericType, ParametrizedType
+from zoonomia.types import Type, ParametrizedType
 from zoonomia.operations import (
     full, grow, ramped_half_and_half, mutate_subtree, mutate_interior_node,
     mutate_leaf_node, crossover_subtree, tournament_select,
@@ -31,12 +31,12 @@ class TestFull(unittest.TestCase):
         list_type = Type(name='List')
         set_type = Type(name='Set')
 
-        collection_type = GenericType(
+        collection_type = Type(
             name='Collection',
             contained_types=frozenset((list_type, set_type))
         )
 
-        number_type = GenericType(
+        number_type = Type(
             name='Number',
             contained_types=frozenset((int_type, float_type))
         )
@@ -112,12 +112,12 @@ class TestFull(unittest.TestCase):
         list_type = Type(name='List')
         set_type = Type(name='Set')
 
-        collection_type = GenericType(
+        collection_type = Type(
             name='Collection',
             contained_types=frozenset((list_type, set_type))
         )
 
-        number_type = GenericType(
+        number_type = Type(
             name='Number',
             contained_types=frozenset((int_type, float_type))
         )
@@ -200,12 +200,12 @@ class TestGrow(unittest.TestCase):
         list_type = Type(name='List')
         set_type = Type(name='Set')
 
-        collection_type = GenericType(
+        collection_type = Type(
             name='Collection',
             contained_types=frozenset((list_type, set_type))
         )
 
-        number_type = GenericType(
+        number_type = Type(
             name='Number',
             contained_types=frozenset((int_type, float_type))
         )
@@ -277,12 +277,12 @@ class TestGrow(unittest.TestCase):
         list_type = Type(name='List')
         set_type = Type(name='Set')
 
-        collection_type = GenericType(
+        collection_type = Type(
             name='Collection',
             contained_types=frozenset((list_type, set_type))
         )
 
-        number_type = GenericType(
+        number_type = Type(
             name='Number',
             contained_types=frozenset((int_type, float_type))
         )
@@ -442,12 +442,12 @@ class TestRampedHalfAndHalf(unittest.TestCase):
         list_type = Type(name='List')
         set_type = Type(name='Set')
 
-        collection_type = GenericType(
+        collection_type = Type(
             name='Collection',
             contained_types=frozenset((list_type, set_type))
         )
 
-        number_type = GenericType(
+        number_type = Type(
             name='Number',
             contained_types=frozenset((int_type, float_type))
         )
@@ -544,12 +544,12 @@ class TestRampedHalfAndHalf(unittest.TestCase):
         list_type = Type(name='List')
         set_type = Type(name='Set')
 
-        collection_type = GenericType(
+        collection_type = Type(
             name='Collection',
             contained_types=frozenset((list_type, set_type))
         )
 
-        number_type = GenericType(
+        number_type = Type(
             name='Number',
             contained_types=frozenset((int_type, float_type))
         )
@@ -643,12 +643,12 @@ class TestRampedHalfAndHalf(unittest.TestCase):
         list_type = Type(name='List')
         set_type = Type(name='Set')
 
-        collection_type = GenericType(
+        collection_type = Type(
             name='Collection',
             contained_types=frozenset((list_type, set_type))
         )
 
-        number_type = GenericType(
+        number_type = Type(
             name='Number',
             contained_types=frozenset((int_type, float_type))
         )

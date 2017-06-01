@@ -1,6 +1,6 @@
 from threading import Lock
 
-from zoonomia.types import Type, GenericType, ParametrizedType
+from zoonomia.types import Type, ParametrizedType
 
 
 class Symbol(object):
@@ -19,7 +19,7 @@ class Symbol(object):
         :param dtype:
             The type of the underlying data in the execution environment.
 
-        :type dtype: Type|GenericType|ParametrizedType
+        :type dtype: Type | ParametrizedType
 
         """
         self.name = name
@@ -68,7 +68,7 @@ class Operator(object):
             The type signature of the underlying function. Defaults to an empty
             tuple, indicating that the operator is a terminal operator.
 
-        :type signature: tuple[Type|ParametrizedType|GenericType]
+        :type signature: tuple[Type|ParametrizedType]
 
         """
         self.symbol = symbol
@@ -294,14 +294,14 @@ class OperatorTable(object):
 
         :param dtype: A type.
 
-        :type dtype: Type | GenericType | ParametrizedType
+        :type dtype: Type | ParametrizedType
 
         :raise KeyError:
             If the given *dtype* has no associated operators in this
             OperatorTable.
 
         :raise TypeError:
-            If *dtype* is not a Type, GenericType, or ParametrizedType.
+            If *dtype* is not a Type or ParametrizedType.
 
         :return:
             The Operators belonging to this OperatorTable for which the given
@@ -310,14 +310,14 @@ class OperatorTable(object):
         :rtype: frozenset[Operator]
 
         """
-        if isinstance(dtype, (Type, GenericType, ParametrizedType)):
+        if isinstance(dtype, (Type, ParametrizedType)):
             if dtype in self:
                 return self._dtype_to_operators[dtype]
             else:
                 raise KeyError(dtype)
         else:
             raise TypeError(
-                'dtype must be a Type, GenericType, or ParametrizedType'
+                'dtype must be a Type or ParametrizedType'
             )
 
     def __contains__(self, dtype):
@@ -326,10 +326,10 @@ class OperatorTable(object):
 
         :param dtype: A type.
 
-        :type dtype: Type | GenericType | ParametrizedType
+        :type dtype: Type | ParametrizedType
 
         :raise TypeError:
-            If *dtype* is not a Type, GenericType, or ParametrizedType.
+            If *dtype* is not a Type or ParametrizedType.
 
         :return:
             Whether this OperatorTable contains any Operators for which the
@@ -338,7 +338,7 @@ class OperatorTable(object):
         :rtype: bool
 
         """
-        if isinstance(dtype, (Type, GenericType, ParametrizedType)):
+        if isinstance(dtype, (Type, ParametrizedType)):
             if dtype not in self._dtype_to_operators:
                 with self._lock:
                     ts = self._dtype_to_operators.keys()
@@ -362,7 +362,7 @@ class OperatorTable(object):
             return dtype in self._dtype_to_operators
         else:
             raise TypeError(
-                'dtype must be a Type, GenericType, or ParametrizedType'
+                'dtype must be a Type or ParametrizedType'
             )
 
     def __repr__(self):

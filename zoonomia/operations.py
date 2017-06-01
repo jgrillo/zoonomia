@@ -35,7 +35,7 @@ def full(
     :param dtype:
         The return type of the resulting solution's functional representation.
 
-    :type dtype: Type or GenericType or ParametrizedType
+    :type dtype: Type | ParametrizedType
 
     :param objectives:
         The objectives that the resulting solution will be constructed with.
@@ -113,7 +113,7 @@ def grow(
     :param dtype:
         The return type of the resulting solution's functional representation.
 
-    :type dtype: type
+    :type dtype: Type | ParametrizedType
 
     :param objectives:
         The objectives that the resulting solution will be constructed with.
@@ -200,7 +200,7 @@ def ramped_half_and_half(
     :param dtype:
         The return type of the resulting solutions' functional representations.
 
-    :type dtype: type
+    :type dtype: Type | ParametrizedType
 
     :param objectives:
         The objectives that the resulting solution will be constructed with.

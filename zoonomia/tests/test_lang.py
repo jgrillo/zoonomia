@@ -6,7 +6,7 @@ import hypothesis.strategies as st
 from hypothesis import given, settings, HealthCheck
 from concurrent.futures import ThreadPoolExecutor
 
-from zoonomia.types import Type, GenericType, ParametrizedType
+from zoonomia.types import Type, ParametrizedType
 from zoonomia.lang import (
     Symbol, Call, Operator, OperatorTable
 )
@@ -598,7 +598,7 @@ class TestOperatorTable(unittest.TestCase):
         int_type = Type(name='int')
         str_type = Type(name='str')
         list_type = Type(name='List')
-        collection_type = GenericType(
+        collection_type = Type(
             name='Collection', contained_types=frozenset((list_type,))
         )
 
@@ -617,13 +617,13 @@ class TestOperatorTable(unittest.TestCase):
 
     def test_operator_table_lookup_raises_TypeError_when_improper_type(self):
         """Test that an OperatorTable raises TypeError when lookup by a key
-        which is not a Type, GenericType, or ParametrizedType is attempted.
+        which is not a Type or ParametrizedType is attempted.
 
         """
         int_type = Type(name='int')
         str_type = Type(name='str')
         list_type = Type(name='List')
-        collection_type = GenericType(
+        collection_type = Type(
             name='Collection', contained_types=frozenset((list_type,))
         )
         collection_of_ints_type = ParametrizedType(
@@ -660,12 +660,12 @@ class TestOperatorTable(unittest.TestCase):
         list_type = Type(name='List')
         set_type = Type(name='Set')
 
-        collection_type = GenericType(
+        collection_type = Type(
             name='Collection',
             contained_types=frozenset((list_type, set_type))
         )
 
-        number_type = GenericType(
+        number_type = Type(
             name='Number',
             contained_types=frozenset((int_type, float_type))
         )
@@ -768,11 +768,11 @@ class TestOperatorTable(unittest.TestCase):
         list_type = Type(name='List')
         set_type = Type(name='Set')
 
-        collection_type = GenericType(
+        collection_type = Type(
             name='Collection',
             contained_types=frozenset((list_type, set_type))
         )
-        number_type = GenericType(
+        number_type = Type(
             name='Number',
             contained_types=frozenset((int_type, float_type))
         )
@@ -817,11 +817,11 @@ class TestOperatorTable(unittest.TestCase):
         int_type = Type(name='Int')
         float_type = Type(name='Float')
         list_type = Type(name='List')
-        number_type = GenericType(
+        number_type = Type(
             name='Number',
             contained_types=frozenset((int_type, float_type))
         )
-        collection_type = GenericType(
+        collection_type = Type(
             name='Collection', contained_types=frozenset((list_type,))
         )
         collection_of_numbers_type = ParametrizedType(
@@ -854,11 +854,11 @@ class TestOperatorTable(unittest.TestCase):
         int_type = Type(name='Int')
         float_type = Type(name='Float')
         list_type = Type(name='List')
-        number_type = GenericType(
+        number_type = Type(
             name='Number',
             contained_types=frozenset((int_type, float_type))
         )
-        collection_type = GenericType(
+        collection_type = Type(
             name='Collection', contained_types=frozenset((list_type,))
         )
         collection_of_numbers_type = ParametrizedType(
@@ -883,7 +883,7 @@ class TestOperatorTable(unittest.TestCase):
 
     def test_operator_table_contains_raises_TypeError_when_improper_key(self):
         """Test that OperatorTable raises TypeError when testing containment of
-        a key which is not a Type, GenericType, or ParametrizedType.
+        a key which is not a Type or ParametrizedType.
 
         """
         int_type = Type(name='Int')
