@@ -368,7 +368,9 @@ def crossover_subtree(solution_1, solution_2):
 
 def tournament_select(solution_1, solution_2, rng):  # TODO: clean up docs
     """Perform multi-objective tournament selection between two candidate
-    solutions.
+    solutions. This is basically just a toy, there are much better selection
+    algorithms than tournament selection. It's the only selection operator
+    included with Zoonomia. You are encouraged to implement your own!
 
     :param solution_1: A candidate solution.
     :type solution_1: zoonomia.solution.Solution
