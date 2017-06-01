@@ -1,3 +1,19 @@
+```
+   Copyright 2015-2017 Jesse C. Grillo
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
+
 ## Zoonomia
 
 [![Documentation Status](https://readthedocs.org/projects/zoonomia/badge/?version=latest)](https://zoonomia.readthedocs.org/en/latest/?badge=latest) [![Build Status](https://travis-ci.org/jgrillo/zoonomia.svg)](https://travis-ci.org/jgrillo/zoonomia)
@@ -40,19 +56,16 @@ basic infrastructure to build *your own* evolutionary algorithms.
 
 ## Example usage
 
-In the following example we will evolve a simple 
+In the following example we will evolve a simple
 
 ```python
-from zoonomia.types import Type, GenericType, ParametrizedType
+from zoonomia.types import Type, ParametrizedType
 from zoonomia.lang import Symbol, Operator, OperatorTable
 from zoonomia.solution import Objective, Fitness, Solution 
 from zoonomia.operations import (
     ramped_half_and_half, crossover_subtree, mutate_subtree, 
     mutate_interior_node, mutate_leaf_node, tournament_select
 )
-
-
-
 ```
 TBD
 
@@ -79,16 +92,16 @@ If you do choose to contribute (thank you in advance, by the way), please try to
 make sure that whatever code you write is carefully documented and covered by 
 tests.
 
-## building and running the tests
+## Building and running the tests
 
 In the project root, build a virtualenv, install the dependencies, and run the
 tests using PyTest:
 
-`python3 -mvenv venv`
-`. venv/bin/activate`
-`pip install -r requirements.txt && pip install -r requirements-test.txt`
-`pip install -e .`
-`py.test`
+1. `python3 -mvenv venv`
+2. `. venv/bin/activate`
+3. `pip install -r requirements.txt && pip install -r requirements-test.txt`
+4. `pip install -e .`
+5. `py.test`
 
 ## Resources
 
