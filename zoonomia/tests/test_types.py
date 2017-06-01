@@ -66,7 +66,7 @@ class TestType(unittest.TestCase):
         self.assertNotEqual(another_type, type1)
 
     @given(
-        st.shared(default_types(), key='test_type_type_transitive'),
+        st.shared(default_types(), key='test_type_eq_transitive'),
         st.shared(default_types(), key='test_type_eq_transitive').map(
             lambda t: Type(
                 name=t.name,
@@ -228,9 +228,8 @@ class TestType(unittest.TestCase):
         self.assertIn(another_type_1, another_type_2)
         self.assertIn(another_type_2, another_type_1)
 
-        # FIXME: is this the right assumption?
-        self.assertNotIn(type1, another_type_2)
-        self.assertNotIn(type2, another_type_2)
+        self.assertIn(type1, another_type_2)
+        self.assertIn(type2, another_type_2)
 
     def test_type_not_contains_another_type(self):  # FIXME: hypothesize
         """Test that another_type does not contain a Type when that Type is
@@ -271,11 +270,11 @@ class TestType(unittest.TestCase):
         self.assertNotIn(type1, another_type_1)
         self.assertIn(type1, another_type_2)
 
+        self.assertIn(type2, another_type_1)
         self.assertNotIn(type2, another_type_2)
-        self.assertIn(type2, another_type_2)
 
-        self.assertNotIn(another_type_1, another_type_2)
         self.assertNotIn(another_type_2, another_type_1)
+        self.assertNotIn(another_type_1, another_type_2)
 
     def test_type_contains_ParametrizedType(self):  # FIXME: hypothesize
         """Test that a Type contains a ParametrizedType when any of the

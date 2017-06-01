@@ -49,14 +49,16 @@ type safety!
 
 Zoonomia also provides the environmental scaffolding necessary to evolve 
 populations of random computer programs and apply selection pressures to them 
-such that they evolve to become better at some task. In this sense, Zoonomia is 
+such that over time they become better at some task. In this sense, Zoonomia is 
 a tool for building multiobjective optimizers. However, no great effort has yet 
 been made to provide sophisticated algorithms. Instead, Zoonomia gives *you* the 
 basic infrastructure to build *your own* evolutionary algorithms.
 
 ## Example usage
 
-In the following example we will evolve a simple
+For a complete example project which uses Zoonomia, see TBD
+
+In the following example we will evolve a simple TBD
 
 ```python
 from zoonomia.types import Type, ParametrizedType
@@ -70,7 +72,34 @@ from zoonomia.operations import (
 TBD
 
 See [the documentation](http://zoonomia.readthedocs.org/en/latest/) for more 
-information about how 
+information about how TBD 
+
+### Testing
+
+Zoonomia provides a bunch of builder functions which return 
+[Hypothesis](http://hypothesis.works) strategies for writing property-based 
+tests. These strategies are located in the `tests.strategies.*` packages, and 
+you should use them! For packaging reasons, Zoonomia does not depend on 
+Hypothesis by default, so if you choose to use these utilities you should pull 
+in the version of Hypothesis that Zoonomia depends on for its internal tests to
+make sure the utilities will work for your tests. To do this, 
+
+1. TBD
+2. TBD
+
+A particularly noteworthy utility is `tests.strategies.TBD` which can be used to
+check whether your function set satisfies the 
+[closure property](http://cswww.essex.ac.uk/staff/poli/gp-field-guide/32Step2FunctionSet.html).
+
+Generative property-based testing pairs quite well with Genetic Programming. 
+Testing randomized algorithms can be quite hard, and Hypothesis is very helpful
+in reducing this cognitive load. You should use it. An example:
+
+```python
+from zoonomia.tests.strategies import lang, types
+
+```
+TBD
 
 ## Contributing
 
