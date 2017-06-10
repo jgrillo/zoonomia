@@ -585,75 +585,6 @@ class TestSolution(unittest.TestCase):
 
         self.assertEqual(mock_eval_func.call_count, 3)
 
-    def test_hash_consistent(self):
-        """Test that repeated hash calls yield the same value."""
-        int_type = Type(name='int')
-
-        mock_eval_func = mock.Mock(return_value=66.6)
-
-        objective = Objective(eval_func=mock_eval_func, weight=42.0)
-
-        terminal_operator = Operator(
-            symbol=Symbol(name='term', dtype=int_type)
-        )
-
-        root_1 = Node(operator=terminal_operator)
-
-        tree_1 = Tree(root=root_1)
-
-        solution_1 = Solution(
-            tree=tree_1,
-            objectives=(objective,),
-            map_=self.futures_map
-        )
-        hash_1 = hash(solution_1)
-
-        for _ in range(100):
-            self.assertEqual(hash_1, hash(solution_1))
-
-        mock_eval_func.assert_called_once_with(solution_1)
-
-    def test_hash_equals(self):
-        """Test that when two objects are equal their hashes are equal."""
-        int_type = Type(name='int')
-
-        mock_eval_func = mock.Mock(return_value=66.6)
-
-        objective = Objective(eval_func=mock_eval_func, weight=42.0)
-
-        terminal_operator = Operator(
-            symbol=Symbol(name='term', dtype=int_type)
-        )
-
-        root_1 = Node(operator=terminal_operator)
-        root_2 = Node(operator=terminal_operator)
-
-        tree_1 = Tree(root=root_1)
-        tree_2 = Tree(root=root_2)
-
-        solution_1 = Solution(
-            tree=tree_1,
-            objectives=(objective,),
-            map_=self.futures_map
-        )
-        solution_2 = Solution(
-            tree=tree_2,
-            objectives=(objective,),
-            map_=self.futures_map
-        )
-
-        self.assertEqual(hash(solution_1), hash(solution_2))
-        self.assertEqual(solution_1, solution_2)
-
-        mock_eval_func.assert_has_calls(
-                calls=(
-                    mock.call(solution_1),
-                    mock.call(solution_2)
-                )
-        )
-
-        self.assertEqual(mock_eval_func.call_count, 2)
-
     def test_solution_attributes(self):
         """Test that a Solution's *tree*, *objectives*, and *map* attributes
         refer to the data passed into the constructor.
@@ -892,13 +823,11 @@ class TestSolution(unittest.TestCase):
         unpickled_solution = pickle.loads(pickled_solution)
 
         self.assertEqual(solution, unpickled_solution)
-        self.assertEqual(hash(solution), hash(unpickled_solution))
 
         pickled_solution = pickle.dumps(solution, 0)
         unpickled_solution = pickle.loads(pickled_solution)
 
         self.assertEqual(solution, unpickled_solution)
-        self.assertEqual(hash(solution), hash(unpickled_solution))
 
     def test_solution_gt(self):
         """Test that a Solution which dominates another solution and has equal

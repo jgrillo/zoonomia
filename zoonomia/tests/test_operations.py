@@ -530,8 +530,8 @@ class TestRampedHalfAndHalf(unittest.TestCase):
         self.assertEqual(1, len(ramped_half_and_half_solution))
 
         self.assertEqual(full_solution, expected_solution)
-        self.assertSetEqual(
-            frozenset((full_solution,)),
+        self.assertTupleEqual(
+            (full_solution,),
             ramped_half_and_half_solution
         )
 
@@ -632,8 +632,8 @@ class TestRampedHalfAndHalf(unittest.TestCase):
         self.assertEqual(1, len(ramped_half_and_half_solution))
 
         self.assertEqual(grow_solution, expected_solution)
-        self.assertSetEqual(
-            frozenset((grow_solution,)),
+        self.assertTupleEqual(
+            (grow_solution,),
             ramped_half_and_half_solution
         )
 
@@ -721,8 +721,8 @@ class TestRampedHalfAndHalf(unittest.TestCase):
             tree=expected_tree, objectives=(objective,)
         )
 
-        self.assertSetEqual(
-            frozenset((expected_solution,)),
+        self.assertTupleEqual(
+            (expected_solution,),
             ramped_half_and_half(
                 max_depth=3,
                 population_size=1,

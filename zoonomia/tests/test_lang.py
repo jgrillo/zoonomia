@@ -28,7 +28,8 @@ from zoonomia.lang import (
 from zoonomia.tests.strategies.lang import (
     default_symbols, distinct_symbols, default_operators, distinct_operators,
     default_calls, distinct_calls, default_operator_tables,
-    distinct_operator_tables
+    distinct_operator_tables, default_signatures, default_types,
+    default_parametrized_types
 )
 
 
@@ -419,27 +420,25 @@ class TestOperator(unittest.TestCase):
             TypeError, basis_operator, {'args': ('arg',)}
         )
 
-    @given(
-        default_symbols(),
-        st.builds(
-            tuple,
-            st.lists(elements=default_operators(), min_size=0, max_size=5)
-        ),
-        default_operators()
-    )
+    @given(default_signatures(), default_types() | default_parametrized_types())
     @settings(
         buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
     )
-    def test_operator_call_returns_expected_call_object(  # FIXME: bad data
-        self, target1, args1, operator1
-    ):
+    def test_operator_call_returns_expected_call_object(self, signature, dtype):
         """Test that calling a basis operator like a function produces the
         corresponding Call object.
 
         """
+        target = Symbol(name='target', dtype=dtype)
+        operator = Operator(symbol=target, signature=signature)
+        args = tuple(
+            Symbol(name='sym_{0}'.format(idx), dtype=t)
+            for idx, t in enumerate(signature)
+        )
+
         self.assertEqual(
-            Call(target=target1, operator=operator1, args=args1),
-            operator1(target=target1, args=args1)
+            Call(target=target, operator=operator, args=args),
+            operator(target=target, args=args)
         )
 
 

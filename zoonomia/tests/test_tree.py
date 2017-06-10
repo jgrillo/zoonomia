@@ -15,9 +15,9 @@
 import unittest
 import pickle
 
-from zoonomia.tree import (
-    Node, Tree, calls_iter, symbols_iter
-)
+from pydot import Graph, Node as GraphNode, Edge as GraphEdge
+
+from zoonomia.tree import Node, Tree, iter_calls, iter_symbols
 from zoonomia.lang import Symbol, Operator
 from zoonomia.types import Type
 
@@ -147,53 +147,6 @@ class TestNode(unittest.TestCase):
         self.assertNotEqual(node_1, another_node)
         self.assertNotEqual(node_1, another_node)
 
-    def test_hash_consistent(self):
-        """Test that repeated hash calls yield the same value."""
-        some_type = Type(name='SomeType')
-        signature = (some_type,)
-        dtype = some_type
-
-        basis_op = Operator(
-            symbol=Symbol('func', dtype=dtype), signature=signature
-        )
-        terminal_op = Operator(symbol=Symbol(name='term', dtype=dtype))
-
-        node_1 = Node(operator=basis_op)
-        terminal_node_1 = Node(operator=terminal_op)
-
-        node_1.add_child(child=terminal_node_1, position=0)
-        hash_1 = hash(node_1)
-
-        self.assertEqual(hash_1, hash(node_1))
-        self.assertEqual(hash_1, hash(node_1))
-        self.assertEqual(hash_1, hash(node_1))
-
-    def test_hash_equals(self):
-        """Test that when two objects are equal their hashes are equal."""
-        some_type = Type(name='SomeType')
-        signature = (some_type,)
-        dtype = some_type
-
-        basis_op = Operator(
-            symbol=Symbol('func', dtype=dtype), signature=signature
-        )
-        terminal_op = Operator(symbol=Symbol(name='term', dtype=dtype))
-
-        node_1 = Node(operator=basis_op)
-        terminal_node_1 = Node(operator=terminal_op)
-
-        node_1.add_child(child=terminal_node_1, position=0)
-
-        node_2 = Node(operator=basis_op)
-        terminal_node_2 = Node(operator=terminal_op)
-
-        node_2.add_child(child=terminal_node_2, position=0)
-
-        self.assertFalse(node_1 is node_2)
-
-        self.assertEqual(hash(node_1), hash(node_2))
-        self.assertEqual(node_1, node_2)
-
     def test_node_operator_attribute(self):
         """Test that the *operator* attribute is a reference to the basis
         operator passed into the constructor.
@@ -279,6 +232,63 @@ class TestNode(unittest.TestCase):
         self.assertRaises(
             IndexError, basis_node.add_child, child=terminal_node, position=1
         )
+
+    def test_add_child_raises_when_child_already_present(self):
+        """Test that add_child raises TypeError if a child is already present at
+        the given position.
+
+        """
+        some_type = Type(name='SomeType')
+        signature = (some_type,)
+        dtype = some_type
+        basis_symbol = Symbol(name='func', dtype=dtype)
+
+        basis_op = Operator(symbol=basis_symbol, signature=signature)
+        terminal_op = Operator(symbol=basis_symbol)
+
+        basis_node = Node(operator=basis_op)
+        terminal_node = Node(operator=terminal_op)
+
+        self.assertIsNone(terminal_node.parent)
+        self.assertIsNone(basis_node.left)
+
+        basis_node.add_child(child=terminal_node, position=0)
+
+        self.assertEqual(basis_node.left, terminal_node)
+        self.assertIs(basis_node, terminal_node.parent)
+
+        self.assertRaises(
+            TypeError, basis_node.add_child, child=terminal_node, position=0
+        )
+
+    def test_add_remove_child(self):
+        """Test that a Node's state changes appropriately when a child is added
+        and removed.
+
+        """
+        some_type = Type(name='SomeType')
+        signature = (some_type,)
+        dtype = some_type
+        basis_symbol = Symbol(name='func', dtype=dtype)
+
+        basis_op = Operator(symbol=basis_symbol, signature=signature)
+        terminal_op = Operator(symbol=basis_symbol)
+
+        basis_node = Node(operator=basis_op)
+        terminal_node = Node(operator=terminal_op)
+
+        self.assertIsNone(terminal_node.parent)
+        self.assertIsNone(basis_node.left)
+
+        basis_node.add_child(child=terminal_node, position=0)
+
+        self.assertEqual(basis_node.left, terminal_node)
+        self.assertIs(basis_node, terminal_node.parent)
+
+        basis_node.remove_child(position=0)
+
+        self.assertIsNone(basis_node.left)
+        self.assertIsNone(terminal_node.parent)
 
     def test_node_left(self):
         """Test that a Node's left attribute contains the child corresponding
@@ -386,13 +396,37 @@ class TestNode(unittest.TestCase):
         unpickled_root = pickle.loads(pickled_root)
 
         self.assertEqual(root, unpickled_root)
-        self.assertEqual(hash(root), hash(unpickled_root))
 
         pickled_root = pickle.dumps(root, 0)
         unpickled_root = pickle.loads(pickled_root)
 
         self.assertEqual(root, unpickled_root)
-        self.assertEqual(hash(root), hash(unpickled_root))
+
+    def test_node_graph_node_name(self):
+        """Test that graph_node() returns a GraphNode object with the expected
+        name.
+
+        """
+        some_type = Type(name='SomeType')
+        signature = (some_type,)
+        dtype = some_type
+        symbol = Symbol(name='some_symbol', dtype=dtype)
+
+        basis_op = Operator(symbol=symbol, signature=signature)
+        terminal_op = Operator(symbol=symbol)
+
+        basis_node = Node(operator=basis_op)
+        terminal_node = Node(operator=terminal_op)
+
+        self.assertEqual(
+            '"some_symbol(SomeType) -> SomeType"',
+            basis_node.graph_node().get_name()
+        )
+
+        self.assertEqual(
+            '"some_symbol() -> SomeType"',
+            terminal_node.graph_node().get_name()
+        )
 
 
 class TestTree(unittest.TestCase):
@@ -563,61 +597,6 @@ class TestTree(unittest.TestCase):
         self.assertNotEqual(tree_1, another_tree)
         self.assertNotEqual(tree_1, another_tree)
 
-    def test_hash_consistent(self):
-        """Test that repeated hash calls yield the same value."""
-        int_type = Type(name='int')
-        id_op_1 = Operator(
-            symbol=Symbol(name='identity_1', dtype=int_type),
-            signature=(int_type,)
-        )
-
-        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
-
-        node_11 = Node(operator=id_op_1)
-        node_12 = Node(operator=terminal_op)
-
-        root_1 = Node(operator=id_op_1)
-        root_1.add_child(child=node_11, position=0)
-        node_11.add_child(child=node_12, position=0)
-
-        tree_1 = Tree(root=root_1)
-        hash_1 = hash(tree_1)
-
-        self.assertEqual(hash_1, hash(tree_1))
-        self.assertEqual(hash_1, hash(tree_1))
-        self.assertEqual(hash_1, hash(tree_1))
-
-    def test_hash_equals(self):
-        """Test that when two objects are equal their hashes are equal."""
-        int_type = Type(name='int')
-        id_op_1 = Operator(
-            symbol=Symbol(name='identity_1', dtype=int_type),
-            signature=(int_type,)
-        )
-
-        terminal_op = Operator(symbol=Symbol(name='term', dtype=int_type))
-
-        node_11 = Node(operator=id_op_1)
-        node_12 = Node(operator=terminal_op)
-        node_21 = Node(operator=id_op_1)
-        node_22 = Node(operator=terminal_op)
-
-        root_1 = Node(operator=id_op_1)
-        root_1.add_child(child=node_11, position=0)
-        node_11.add_child(child=node_12, position=0)
-
-        root_2 = Node(operator=id_op_1)
-        root_2.add_child(child=node_21, position=0)
-        node_21.add_child(child=node_22, position=0)
-
-        tree_1 = Tree(root=root_1)
-        tree_2 = Tree(root=root_2)
-
-        self.assertFalse(tree_1 is tree_2)
-
-        self.assertEqual(hash(tree_1), hash(tree_2))
-        self.assertEqual(tree_1, tree_2)
-
     def test_zero_depth_tree_post_order_iter(self):
         """Test that a tree consisting of just one Node behaves as expected
         upon post-order traversal.
@@ -648,7 +627,7 @@ class TestTree(unittest.TestCase):
         node_1 = Node(operator=x)
 
         tree = Tree(root=node_1)
-        pre_order_iter = tree.pre_order_iter()
+        pre_order_iter = tree.iter_pre_order()
 
         iter_0 = next(pre_order_iter)
 
@@ -667,7 +646,7 @@ class TestTree(unittest.TestCase):
         node_1 = Node(operator=x)
 
         tree = Tree(root=node_1)
-        bfs_iter = tree.bfs_iter()
+        bfs_iter = tree.iter_bfs()
 
         iter_0 = next(bfs_iter)
 
@@ -753,7 +732,7 @@ class TestTree(unittest.TestCase):
         node_2.add_child(child=node_3, position=0)
 
         tree = Tree(root=node_1)
-        pre_order_iter = tree.pre_order_iter()
+        pre_order_iter = tree.iter_pre_order()
 
         iter_0 = next(pre_order_iter)
         iter_1 = next(pre_order_iter)
@@ -798,7 +777,7 @@ class TestTree(unittest.TestCase):
         node_2.add_child(child=node_3, position=0)
 
         tree = Tree(root=node_1)
-        bfs_iter = tree.bfs_iter()
+        bfs_iter = tree.iter_bfs()
 
         iter_0 = next(bfs_iter)
         iter_1 = next(bfs_iter)
@@ -968,7 +947,7 @@ class TestTree(unittest.TestCase):
         node_9.add_child(child=node_11, position=1)
 
         tree = Tree(root=node_1)
-        pre_order_iter = tree.pre_order_iter()
+        pre_order_iter = tree.iter_pre_order()
 
         iter_0 = next(pre_order_iter)
         iter_1 = next(pre_order_iter)
@@ -1061,7 +1040,7 @@ class TestTree(unittest.TestCase):
         node_7.add_child(child=node_11, position=1)
 
         tree = Tree(root=node_1)
-        bfs_iter = tree.bfs_iter()
+        bfs_iter = tree.iter_bfs()
 
         iter_0 = next(bfs_iter)
         iter_1 = next(bfs_iter)
@@ -1299,7 +1278,7 @@ class TestTree(unittest.TestCase):
         node_11.add_child(child=node_13, position=1)
 
         tree = Tree(root=node_1)
-        pre_order_iter = tree.pre_order_iter()
+        pre_order_iter = tree.iter_pre_order()
 
         iter_0 = next(pre_order_iter)
         iter_1 = next(pre_order_iter)
@@ -1421,7 +1400,7 @@ class TestTree(unittest.TestCase):
         node_11.add_child(child=node_14, position=1)
 
         tree = Tree(root=node_1)
-        bfs_iter = tree.bfs_iter()
+        bfs_iter = tree.iter_bfs()
 
         iter_0 = next(bfs_iter)
         iter_1 = next(bfs_iter)
@@ -1609,7 +1588,7 @@ class TestTree(unittest.TestCase):
         node_8.add_child(child=node_10, position=1)
 
         tree = Tree(root=node_1)
-        pre_order_iter = tree.pre_order_iter()
+        pre_order_iter = tree.iter_pre_order()
 
         iter_0 = next(pre_order_iter)
         iter_1 = next(pre_order_iter)
@@ -1699,7 +1678,7 @@ class TestTree(unittest.TestCase):
         node_4.add_child(child=node_10, position=1)
 
         tree = Tree(root=node_1)
-        bfs_iter = tree.bfs_iter()
+        bfs_iter = tree.iter_bfs()
 
         iter_0 = next(bfs_iter)
         iter_1 = next(bfs_iter)
@@ -1831,7 +1810,7 @@ class TestTree(unittest.TestCase):
         node_2.add_child(child=node_5, position=2)
 
         tree = Tree(root=node_1)
-        pre_order_iter = tree.pre_order_iter()
+        pre_order_iter = tree.iter_pre_order()
 
         iter_0 = next(pre_order_iter)
         iter_1 = next(pre_order_iter)
@@ -1893,7 +1872,7 @@ class TestTree(unittest.TestCase):
         node_2.add_child(child=node_6, position=2)
 
         tree = Tree(root=node_1)
-        bfs_iter = tree.bfs_iter()
+        bfs_iter = tree.iter_bfs()
 
         iter_0 = next(bfs_iter)
         iter_1 = next(bfs_iter)
@@ -2000,6 +1979,85 @@ class TestTree(unittest.TestCase):
         tree = Tree(root=node_1)
         self.assertEqual(6, len(tree))
 
+    def test_tree_graph(self):
+        """Test that graph() returns the expected pydot.Graph object for the
+        following tree:
+
+                             node_1
+                            /      \
+                        node_2    node_3
+                      /   |   \
+                node_4 node_5 node_6
+
+        The resulting graph object should product the following output when its
+        to_string() methods is called:
+
+        digraph "arity_2(Int, Int) -> Int" {
+        "arity_2(Int, Int) -> Int";
+        "term_a() -> Int";
+        "term_b() -> Int";
+        "term_c() -> Str";
+        "arity_3(Int, Int, Str) -> Int";
+        "arity_3(Int, Int, Str) -> Int" -> "term_c() -> Str";
+        "arity_3(Int, Int, Str) -> Int" -> "term_b() -> Int";
+        "arity_3(Int, Int, Str) -> Int" -> "term_a() -> Int";
+        "term_d() -> Int";
+        "arity_2(Int, Int) -> Int";
+        "arity_2(Int, Int) -> Int" -> "term_d() -> Int";
+        "arity_2(Int, Int) -> Int" -> "arity_3(Int, Int, Str) -> Int";
+        }
+
+        """
+        int_type = Type(name='Int')
+        str_type = Type(name='Str')
+
+        arity_3_op = Operator(
+            symbol=Symbol(name='arity_3', dtype=int_type),
+            signature=(int_type, int_type, str_type)
+        )
+
+        arity_2_op = Operator(
+            symbol=Symbol(name='arity_2', dtype=int_type),
+            signature=(int_type, int_type)
+        )
+
+        terminal_a_op = Operator(symbol=Symbol(name='term_a', dtype=int_type))
+        terminal_b_op = Operator(symbol=Symbol(name='term_b', dtype=int_type))
+        terminal_c_op = Operator(symbol=Symbol(name='term_c', dtype=str_type))
+        terminal_d_op = Operator(symbol=Symbol(name='term_d', dtype=int_type))
+
+        node_4 = Node(operator=terminal_a_op)
+        node_5 = Node(operator=terminal_b_op)
+        node_6 = Node(operator=terminal_c_op)
+        node_2 = Node(operator=arity_3_op)
+        node_3 = Node(operator=terminal_d_op)
+        node_1 = Node(operator=arity_2_op)
+
+        node_1.add_child(child=node_2, position=0)
+        node_1.add_child(child=node_3, position=1)
+        node_2.add_child(child=node_4, position=0)
+        node_2.add_child(child=node_5, position=1)
+        node_2.add_child(child=node_6, position=2)
+
+        tree = Tree(root=node_1)
+
+        expected = """digraph "arity_2(Int, Int) -> Int" {
+"arity_2(Int, Int) -> Int";
+"term_a() -> Int";
+"term_b() -> Int";
+"term_c() -> Str";
+"arity_3(Int, Int, Str) -> Int";
+"arity_3(Int, Int, Str) -> Int" -> "term_c() -> Str";
+"arity_3(Int, Int, Str) -> Int" -> "term_b() -> Int";
+"arity_3(Int, Int, Str) -> Int" -> "term_a() -> Int";
+"term_d() -> Int";
+"arity_2(Int, Int) -> Int";
+"arity_2(Int, Int) -> Int" -> "term_d() -> Int";
+"arity_2(Int, Int) -> Int" -> "arity_3(Int, Int, Str) -> Int";
+}
+"""
+        self.assertEqual(expected, tree.graph().to_string())
+
     def test_tree_pickle(self):
         """Test that a Tree instance can be pickled and unpickled using the
         0 protocol and the -1 protocol.
@@ -2033,24 +2091,22 @@ class TestTree(unittest.TestCase):
 
         tree = Tree(root=root)
 
-        bfs_nodes = tuple(n for n in tree.bfs_iter())
+        bfs_nodes = tuple(n for n in tree.iter_bfs())
 
         pickled_tree = pickle.dumps(tree, -1)
         unpickled_tree = pickle.loads(pickled_tree)
 
-        unpickled_bfs_nodes = tuple(n for n in unpickled_tree.bfs_iter())
+        unpickled_bfs_nodes = tuple(n for n in unpickled_tree.iter_bfs())
 
         self.assertEqual(tree, unpickled_tree)
-        self.assertEqual(hash(tree), hash(unpickled_tree))
         self.assertTupleEqual(bfs_nodes, unpickled_bfs_nodes)
 
         pickled_tree = pickle.dumps(tree, 0)
         unpickled_tree = pickle.loads(pickled_tree)
 
-        unpickled_bfs_nodes = tuple(n for n in unpickled_tree.bfs_iter())
+        unpickled_bfs_nodes = tuple(n for n in unpickled_tree.iter_bfs())
 
         self.assertEqual(tree, unpickled_tree)
-        self.assertEqual(hash(tree), hash(unpickled_tree))
         self.assertTupleEqual(bfs_nodes, unpickled_bfs_nodes)
 
     def test_calls_iter(self):
@@ -2105,7 +2161,7 @@ class TestTree(unittest.TestCase):
 
         tree = Tree(root=node_6)
 
-        calls = list(calls_iter(tree=tree, result_formatter='result_{0}'))
+        calls = list(iter_calls(tree=tree, result_formatter='result_{0}'))
 
         symbol_1 = node_1.operator.symbol
         symbol_2 = node_2.operator.symbol
@@ -2182,6 +2238,165 @@ class TestTree(unittest.TestCase):
         symbol_3 = terminal_c_op()
         symbol_5 = terminal_d_op()
 
-        symbols = list(symbols_iter(tree=tree))
+        symbols = list(iter_symbols(tree=tree))
 
         self.assertListEqual([symbol_1, symbol_2, symbol_3, symbol_5], symbols)
+
+    def test_tree_getitem_and_delitem(self):
+        """Test that a tree returns the expected nodes under __getitem__ and
+        that the expected nodes are removed under __delitem__.
+
+                             node_1
+                            /      \
+                        node_2    node_3
+                      /   |   \
+                node_4 node_5 node_6
+
+        When __getitem__[0] is called, node_1 should be returned.
+        When __getitem__[(0, 0)] is called, node_1 should be returned.
+        When __getitem__[3] is called, node_5 should be returned.
+        When __getitem__[(2, 1)] is called, node_5 should be returned.
+        When __getitem__[5] is called, node_3 should be returned.
+        When __getitem__[(1, 1)] is called, node_3 should be returned.
+
+        """
+        self.maxDiff = None
+        int_type = Type(name='Int')
+        str_type = Type(name='Str')
+
+        node_2_op = Operator(
+            symbol=Symbol(name='node_2', dtype=int_type),
+            signature=(int_type, int_type, str_type)
+        )
+
+        node_1_op = Operator(
+            symbol=Symbol(name='node_1', dtype=int_type),
+            signature=(int_type, int_type)
+        )
+
+        node_4_op = Operator(symbol=Symbol(name='node_4', dtype=int_type))
+        node_5_op = Operator(symbol=Symbol(name='node_5', dtype=int_type))
+        node_6_op = Operator(symbol=Symbol(name='node_6', dtype=str_type))
+        node_3_op = Operator(symbol=Symbol(name='node_3', dtype=int_type))
+
+        node_4 = Node(operator=node_4_op)
+        node_5 = Node(operator=node_5_op)
+        node_6 = Node(operator=node_6_op)
+        node_2 = Node(operator=node_2_op)
+        node_3 = Node(operator=node_3_op)
+        node_1 = Node(operator=node_1_op)
+
+        node_1.add_child(child=node_2, position=0)
+        node_1.add_child(child=node_3, position=1)
+        node_2.add_child(child=node_4, position=0)
+        node_2.add_child(child=node_5, position=1)
+        node_2.add_child(child=node_6, position=2)
+
+        tree = Tree(root=node_1)
+
+        self.assertEqual(node_1, tree[0])
+        self.assertEqual(node_1, tree[(0, 0)])
+        self.assertEqual(node_5, tree[3])
+        self.assertEqual(node_5, tree[(2, 1)])
+        self.assertEqual(node_3, tree[5])
+        self.assertEqual(node_3, tree[(1, 1)])
+
+        self.assertRaises(IndexError, tree.__getitem__, -1)
+        self.assertRaises(IndexError, tree.__getitem__, (-1, 0))
+        self.assertRaises(IndexError, tree.__getitem__, (0, -1))
+        self.assertRaises(IndexError, tree.__getitem__, (-1, -1))
+
+        self.assertEqual(6, len(tree))
+
+        expected_pre_order = (node_1, node_2, node_4, node_5, node_6, node_3)
+        pre_order = tuple(n for n in tree.iter_pre_order())
+        self.assertTupleEqual(expected_pre_order, pre_order)
+
+        expected_post_order = (node_4, node_5, node_6, node_2, node_3, node_1)
+        post_order = tuple(n for n in tree)
+        self.assertTupleEqual(expected_post_order, post_order)
+
+        expected_bfs = (node_1, node_2, node_3, node_4, node_5, node_6)
+        bfs = tuple(n for n in tree.iter_bfs())
+        self.assertTupleEqual(expected_bfs, bfs)
+
+        del tree[(1, 1)]  # first delete node_3
+
+        # Now the tree looks like this:
+        #
+        #              node_1
+        #             /      \
+        #          node_2     *
+        #        /   |   \
+        #  node_4 node_5 node_6
+
+        self.assertIsNone(node_3.parent)
+        self.assertTupleEqual(node_1.right, (None,))
+
+        node_3a_op = Operator(symbol=Symbol(name='node_3a', dtype=int_type))
+        node_3a = Node(operator=node_3a_op)
+
+        node_1.add_child(child=node_3a, position=1)
+
+        # Now the tree looks like this:
+        #
+        #              node_1
+        #             /      \
+        #          node_2     node_3a
+        #        /   |   \
+        #  node_4 node_5 node_6
+
+        self.assertTupleEqual((node_3a,), node_1.right)
+
+        self.assertEqual(6, len(tree))
+
+        expected_pre_order = (node_1, node_2, node_4, node_5, node_6, node_3a)
+        pre_order = tuple(n for n in tree.iter_pre_order())
+        self.assertTupleEqual(expected_pre_order, pre_order)
+
+        expected_post_order = (node_4, node_5, node_6, node_2, node_3a, node_1)
+        post_order = tuple(n for n in tree)
+        self.assertTupleEqual(expected_post_order, post_order)
+
+        expected_bfs = (node_1, node_2, node_3a, node_4, node_5, node_6)
+        bfs = tuple(n for n in tree.iter_bfs())
+        self.assertTupleEqual(expected_bfs, bfs)
+
+        del tree[1]  # then delete node_2
+
+        # Now the tree looks like this:
+        #
+        #              node_1
+        #             /      \
+        #            *     node_3a
+
+        self.assertIsNone(node_2.parent)
+        self.assertIsNone(node_1.left)
+
+        node_2a_op = Operator(symbol=Symbol(name='node_2a', dtype=int_type))
+        node_2a = Node(operator=node_2a_op)
+
+        node_1.add_child(child=node_2a, position=0)
+
+        # Now the tree looks like this:
+        #
+        #              node_1
+        #             /      \
+        #          node_2a  node_3a
+
+        self.assertEqual(3, len(tree))
+
+        expected_pre_order = (node_1, node_2a, node_3a)
+        pre_order = tuple(n for n in tree.iter_pre_order())
+        self.assertTupleEqual(expected_pre_order, pre_order)
+
+        expected_post_order = (node_2a, node_3a, node_1)
+        post_order = tuple(n for n in tree)
+        self.assertTupleEqual(expected_post_order, post_order)
+
+        expected_bfs = (node_1, node_2a, node_3a)
+        bfs = tuple(n for n in tree.iter_bfs())
+        self.assertTupleEqual(expected_bfs, bfs)
+
+        # check that deleting the root node fails
+        self.assertRaises(IndexError, tree.__delitem__, 0)

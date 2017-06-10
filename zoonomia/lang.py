@@ -50,7 +50,10 @@ class Symbol(object):
         return self._hash
 
     def __eq__(self, other):
-        return self.name == other.name and self.dtype == other.dtype
+        if isinstance(other, Symbol):
+            return self.name == other.name and self.dtype == other.dtype
+        else:
+            return NotImplemented
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -59,6 +62,9 @@ class Symbol(object):
         return 'Symbol(name={symbol}, dtype={dtype})'.format(
             symbol=repr(self.name), dtype=repr(self.dtype)
         )
+
+    def format_str(self):
+        return self.name + '({0}) -> ' + self.dtype.name
 
 
 class Operator(object):
@@ -100,11 +106,14 @@ class Operator(object):
         return self._hash
 
     def __eq__(self, other):
-        return (
-            self.symbol == other.symbol and
-            self.signature == other.signature and
-            self.dtype == other.dtype
-        )
+        if isinstance(other, Operator):
+            return (
+                self.symbol == other.symbol and
+                self.signature == other.signature and
+                self.dtype == other.dtype
+            )
+        else:
+            return NotImplemented
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -120,6 +129,11 @@ class Operator(object):
 
     def __str__(self):
         return self.symbol.name
+
+    def signature_str(self):
+        return self.symbol.format_str().format(
+            ', '.join(t.name for t in self.signature)
+        )
 
     def __call__(self, target=None, args=None):
         """Symbolically "call" this instance's *symbol* on the *args*. Returns
@@ -217,13 +231,16 @@ class Call(object):
         return self._hash
 
     def __eq__(self, other):
-        return (
-            self.target == other.target and
-            self.symbol == other.symbol and
-            self.args == other.args and
-            self.dtype == other.dtype and
-            self.operator == other.operator
-        )
+        if isinstance(other, Call):
+            return (
+                self.target == other.target and
+                self.symbol == other.symbol and
+                self.args == other.args and
+                self.dtype == other.dtype and
+                self.operator == other.operator
+            )
+        else:
+            return NotImplemented
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -250,9 +267,9 @@ class OperatorTable(object):
         Montana1995.
 
         :param operators:
-            An iterable of Operators to initialize this instance with.
+            An iterator of Operators to initialize this instance with.
 
-        :type operators: collections.Iterable[Operator]
+        :type operators: collections.Iterator[Operator]
 
         """
         self.operators = frozenset(operators)
@@ -275,7 +292,10 @@ class OperatorTable(object):
         return self._hash
 
     def __eq__(self, other):
-        return self.operators == other.operators
+        if isinstance(other, OperatorTable):
+            return self.operators == other.operators
+        else:
+            return NotImplemented
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -291,7 +311,14 @@ class OperatorTable(object):
         :rtype: OperatorTable
 
         """
-        return OperatorTable(operators=self.operators.union(other.operators))
+        if isinstance(other, OperatorTable):
+            return OperatorTable(
+                operators=self.operators.union(other.operators)
+            )
+        else:
+            raise TypeError(
+                'other must be OperatorTable, found: {0}'.format(repr(other))
+            )
 
     def __iter__(self):
         """Returns an iterator over this instance's operators.
@@ -325,13 +352,15 @@ class OperatorTable(object):
 
         """
         if isinstance(dtype, (Type, ParametrizedType)):
-            if dtype in self:
+            if dtype in self:  # N.B.: This does the necessary synchronization
                 return self._dtype_to_operators[dtype]
             else:
                 raise KeyError(dtype)
         else:
             raise TypeError(
-                'dtype must be a Type or ParametrizedType'
+                'dtype must be a Type or ParametrizedType, found: {0}'.format(
+                    repr(dtype)
+                )
             )
 
     def __contains__(self, dtype):
@@ -376,7 +405,9 @@ class OperatorTable(object):
             return dtype in self._dtype_to_operators
         else:
             raise TypeError(
-                'dtype must be a Type or ParametrizedType'
+                'dtype must be a Type or ParametrizedType, found: {0}'.format(
+                    repr(dtype)
+                )
             )
 
     def __repr__(self):

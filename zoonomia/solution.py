@@ -12,11 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import logging
-
 from threading import RLock
-
-log = logging.getLogger(__name__)  # FIXME
 
 
 class Objective(object):
@@ -60,9 +56,13 @@ class Objective(object):
         return self._hash
 
     def __eq__(self, other):
-        return (
-            self.eval_func == other.eval_func and self.weight == other.weight
-        )
+        if isinstance(other, Objective):
+            return (
+                self.eval_func == other.eval_func
+                and self.weight == other.weight
+            )
+        else:
+            return NotImplemented
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -121,30 +121,47 @@ class Fitness(object):
         return self._hash
 
     def __eq__(self, other):
-        return self.score == other.score and self.objective == other.objective
+        if isinstance(other, Fitness):
+            return (
+                self.score == other.score and self.objective == other.objective
+            )
+        else:
+            return NotImplemented
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
     def __gt__(self, other):
-        return (
-            self.score > other.score and self.objective == other.objective
-        )
+        if isinstance(other, Fitness):
+            return (
+                self.score > other.score and self.objective == other.objective
+            )
+        else:
+            return NotImplemented
 
     def __ge__(self, other):
-        return (
-            self.score >= other.score and self.objective == other.objective
-        )
+        if isinstance(other, Fitness):
+            return (
+                self.score >= other.score and self.objective == other.objective
+            )
+        else:
+            return NotImplemented
 
     def __lt__(self, other):
-        return (
-            self.score < other.score and self.objective == other.objective
-        )
+        if isinstance(other, Fitness):
+            return (
+                self.score < other.score and self.objective == other.objective
+            )
+        else:
+            return NotImplemented
 
     def __le__(self, other):
-        return (
-            self.score <= other.score and self.objective == other.objective
-        )
+        if isinstance(other, Fitness):
+            return (
+                self.score <= other.score and self.objective == other.objective
+            )
+        else:
+            return NotImplemented
 
 
 class Solution(object):  # FIXME: should fitnesses be futures?
@@ -155,7 +172,7 @@ class Solution(object):  # FIXME: should fitnesses be futures?
 
     """
 
-    __slots__ = ('tree', 'map', 'objectives', 'fitnesses', '_hash', '_lock')
+    __slots__ = ('tree', 'map', 'objectives', 'fitnesses', '_lock')
 
     def __init__(self, tree, objectives, map_=map):
         """A Solution instance unites a Tree representation with a tuple of
@@ -181,7 +198,7 @@ class Solution(object):  # FIXME: should fitnesses be futures?
             is preserved where required.
 
         :type map_:
-            ((T) -> U, collections.Iterable[T]) -> collectons.Iterable[U]
+            ((T) -> U, collections.Iterator[T]) -> collectons.Iterator[U]
 
         """
         self.tree = tree
@@ -189,7 +206,6 @@ class Solution(object):  # FIXME: should fitnesses be futures?
         self.map = map_
         self.fitnesses = None
         self._lock = RLock()
-        self._hash = None
 
     def __getstate__(self):
         return {
@@ -225,9 +241,6 @@ class Solution(object):  # FIXME: should fitnesses be futures?
                         ordered_fitnesses[idx] = fitness
 
                     self.fitnesses = tuple(ordered_fitnesses)
-                    self._hash = hash((
-                        'Solution', self.tree, self.fitnesses, self.objectives
-                    ))
         # TODO: asynchronize by making _fitnesses a generator?
         return self.fitnesses
 
@@ -251,16 +264,21 @@ class Solution(object):  # FIXME: should fitnesses be futures?
         :rtype: bool
 
         """
-        if self.objectives == other.objectives:
-            return any(
+        if isinstance(other, Solution):
+            if self.objectives == other.objectives:
+                return any(
                     f1 > f2 for f1, f2 in zip(self.evaluate(), other.evaluate())
-            ) and all(
+                ) and all(
                     f1 >= f2 for f1, f2 in
                     zip(self.evaluate(), other.evaluate())
-            )
+                )
+            else:
+                raise TypeError(
+                    'method is nonsense for solutions with unequal objectives'
+                )
         else:
             raise TypeError(
-                    'method is nonsense for solutions with unequal objectives'
+                'other must be a Solution, found: {0}'.format(repr(other))
             )
 
     def __repr__(self):
@@ -271,28 +289,6 @@ class Solution(object):  # FIXME: should fitnesses be futures?
             objectives=repr(self.objectives),
             map_=repr(self.map)
         )
-
-    def __hash__(self):
-        """Computes this solution's hash in a thread-safe manner. A solution's
-        hash is computed by combining the hashes of its *tree*, its
-        *objectives*, and the zoonomia.solution.Fitness instances corresponding
-        to those objectives. Values are cached in keeping with the immutable
-        semantics of this class, but users should be aware that if this
-        instance's *evaluate* method has not been called prior to the first
-        call to *__hash__*, calling this method will trigger one (and only one)
-        potentially expensive *evaluate* call.
-
-        :return: The integer hash code for this instance.
-        :rtype: int
-
-        """
-        if self._hash is None:
-            with self._lock:
-                if self._hash is None:
-                    log.warning('Evaluation triggered by hash for %s', self)
-                    self.evaluate()
-
-        return self._hash
 
     def __eq__(self, other):
         """Computes whether this solution equals another solution in a
@@ -310,19 +306,17 @@ class Solution(object):  # FIXME: should fitnesses be futures?
         :rtype: bool
 
         """
-        hash(other)  # potentially trigger evaluation of other
+        if isinstance(other, Solution):
+            self.evaluate()
+            other.evaluate()
 
-        if self._hash is None:
-            with self._lock:
-                if self._hash is None:
-                    log.warning('Evaluation triggered by __eq__ for %s', self)
-                    self.evaluate()
-
-        return (
-            self.tree == other.tree and
-            self.fitnesses == other.fitnesses and
-            self.objectives == other.objectives
-        )
+            return (
+                self.tree == other.tree and
+                self.fitnesses == other.fitnesses and
+                self.objectives == other.objectives
+            )
+        else:
+            return NotImplemented
 
     def __ne__(self, other):
         """Computes whether this solution doesn't equal another solution in a

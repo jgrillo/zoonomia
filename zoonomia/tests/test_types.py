@@ -188,7 +188,7 @@ class TestType(unittest.TestCase):
         self.assertIn(type1, type2)
         self.assertIn(type1, type2)
 
-    def test_type_contains_another_type(self):  # FIXME: hypothesize
+    def test_type_contains_another_type(self):
         """Test that another_type contains type1 when type1 is contained by any
         of another_types's *contained_types*.
 
@@ -204,7 +204,7 @@ class TestType(unittest.TestCase):
         self.assertNotEqual(type1, another_type)
         self.assertIn(type1, another_type)
 
-    def test_type_contains_other_type_2(self):  # FIXME: hypothesize
+    def test_type_contains_other_type_2(self):
         """Test that a Type type1 contains another Type type2 when any of
         type1's *contained_types* contain type2.
 
@@ -231,7 +231,7 @@ class TestType(unittest.TestCase):
         self.assertIn(type1, another_type_2)
         self.assertIn(type2, another_type_2)
 
-    def test_type_not_contains_another_type(self):  # FIXME: hypothesize
+    def test_type_not_contains_another_type(self):
         """Test that another_type does not contain a Type when that Type is
         not contained by any of another_type's *contained_types*.
 
@@ -248,7 +248,7 @@ class TestType(unittest.TestCase):
         self.assertNotEqual(type1, another_type)
         self.assertNotIn(type1, another_type)
 
-    def test_type_not_contains_another_type_2(self):  # FIXME: hypothesize
+    def test_type_not_contains_another_type_2(self):
         """Test that a Type does not contain another Type when none of the
         Type's *contained_types* contain the otherType.
 
@@ -276,7 +276,7 @@ class TestType(unittest.TestCase):
         self.assertNotIn(another_type_2, another_type_1)
         self.assertNotIn(another_type_1, another_type_2)
 
-    def test_type_contains_ParametrizedType(self):  # FIXME: hypothesize
+    def test_type_contains_ParametrizedType(self):
         """Test that a Type contains a ParametrizedType when any of the
         *contained_types* contains the ParametrizedType's base type.
 
@@ -299,7 +299,7 @@ class TestType(unittest.TestCase):
 
         self.assertIn(parametrized_type, another_type)
 
-    def test_type_contains_ParametrizedType_2(self):  # FIXME: hypothesize
+    def test_type_contains_ParametrizedType_2(self):
         """Test that a ParametrizedType can be resolved to a Type if the
         ParametrizedType's *base_type* is a Type which is contained by
         the resolution target.
@@ -328,7 +328,7 @@ class TestType(unittest.TestCase):
 
         self.assertIn(collection_of_numbers_type, collection_type)
 
-    def test_type_not_contains_ParametrizedType(self):  # FIXME: hypothesize
+    def test_type_not_contains_ParametrizedType(self):
         """Test that a Type does not contain a ParametrizedType when none of the
         *contained_types* contain the ParametrizedType's base type.
 
@@ -351,7 +351,7 @@ class TestType(unittest.TestCase):
 
         self.assertNotIn(parametrized_type, another_type)
 
-    def test_type_not_contains_ParametrizedType_2(self):  # FIXME: hypothesize
+    def test_type_not_contains_ParametrizedType_2(self):
         """Test that a ParametrizedType cannot be resolved to a Type if
         the ParametrizedType's *base_type* is a Type which is notcontained by
         the resolution target.

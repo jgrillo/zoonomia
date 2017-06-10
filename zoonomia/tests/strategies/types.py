@@ -113,7 +113,7 @@ def types(name_ts, meta_ts):
                 'contained_types': contained_types(children)
             }
         ),
-        max_leaves=3
+        max_leaves=5
     )
 
 
@@ -222,7 +222,7 @@ def parametrized_types(names_strategy, metas_strategy, base_ts, parameter_ts):
                 'parameter_types': parameter_types(parameter_ts | children)
             }
         ),
-        max_leaves=3
+        max_leaves=5
     )
 
 

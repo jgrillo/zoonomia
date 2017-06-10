@@ -16,7 +16,7 @@ import unittest
 
 from jinja2 import Environment, PackageLoader
 
-from zoonomia.tree import Node, Tree, calls_iter, symbols_iter
+from zoonomia.tree import Node, Tree, iter_calls, iter_symbols
 from zoonomia.lang import Symbol, Operator
 from zoonomia.types import Type
 from zoonomia.compile import compile_python_func, compile_python_tree
@@ -72,11 +72,12 @@ class TestCompile(unittest.TestCase):
 
         tree = Tree(root=plus_node)
 
-        calls = calls_iter(tree=tree, result_formatter='result_{0}')
-        symbols = symbols_iter(tree=tree)
+        calls = iter_calls(tree=tree, result_formatter='result_{0}')
+        symbols = iter_symbols(tree=tree)
         target_symbol = Symbol(name='test_func', dtype=float_type)
 
-        expected = u"""def test_func(x, y, z):
+        expected = """
+def test_func(x, y, z):
     result_0 = pow(y, z)
     result_1 = float.__add__(x, result_0)
     return result_1

@@ -12,7 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from zoonomia.tree import calls_iter, symbols_iter
+from zoonomia.tree import iter_calls, iter_symbols
 
 
 def compile_python_func(source, name):
@@ -87,8 +87,8 @@ def compile_python_tree(symbol, tree, python_function_template, **kwargs):
     :rtype: function
 
     """
-    calls = calls_iter(tree=tree, result_formatter='result_{0}')
-    symbols = symbols_iter(tree=tree)
+    calls = iter_calls(tree=tree, result_formatter='result_{0}')
+    symbols = iter_symbols(tree=tree)
 
     render_kwargs = {'symbol': symbol, 'args': symbols, 'calls': calls}
     render_kwargs.update(kwargs)

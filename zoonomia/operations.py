@@ -62,8 +62,55 @@ def full(
     :type rng: random.Random
 
     :return: A candidate solution.
-
     :rtype: zoonomia.solution.Solution
+
+    """
+    root = full_tree(
+        max_depth=max_depth,
+        basis_operators=basis_operators,
+        terminal_operators=terminal_operators,
+        dtype=dtype,
+        rng=rng
+    )
+    tree = Tree(root=root)
+
+    return Solution(tree=tree, objectives=objectives)
+
+
+def full_tree(max_depth, basis_operators, terminal_operators, dtype, rng):
+    """Helper function to build the tree of nodes for :func:`full`.
+
+    :param max_depth:
+        The maximum tree depth from root to leaf.
+
+    :type max_depth: int
+
+    :param basis_operators:
+        The OperatorTable of basis operators which, together with
+        *terminal_operators*, satisfy the closure property.
+
+    :type basis_operators:
+        zoonomia.solution.OperatorTable[zoonomia.solution.Operator]
+
+    :param terminal_operators:
+        The OperatorTable of terminal operators which, together with
+        *terminal_operators*, satisfy the closure property.
+
+    :type terminal_operators:
+        zoonomia.solution.OperatorTable[zoonomia.solution.Operator]
+
+    :param dtype:
+        The return type of the resulting solution's functional representation.
+
+    :type dtype: Type | ParametrizedType
+
+    :param rng:
+        A random number generator instance.
+
+    :type rng: random.Random
+
+    :return: The root node of a tree built using the *full* strategy.
+    :rtype: zoonomia.tree.Node
 
     """
     if max_depth <= 1:
@@ -93,9 +140,7 @@ def full(
 
         parents = children
 
-    tree = Tree(root=root)
-
-    return Solution(tree=tree, objectives=objectives)
+    return root
 
 
 def grow(
@@ -107,7 +152,6 @@ def grow(
     to the interval :math:`[1, d_{max}]`. See Koza1992 and Montana1995.
 
     :param max_depth: The maximum tree depth from root to leaf.
-
     :type max_depth: int
 
     :param basis_operators:
@@ -135,12 +179,54 @@ def grow(
     :type objectives: tuple[zoonomia.solution.Objective]
 
     :param rng: A random number generator instance.
-
     :type rng: random.Random
 
     :return: A candidate solution.
-
     :rtype: zoonomia.solution.Solution
+
+    """
+    root = grow_tree(
+        max_depth=max_depth,
+        basis_operators=basis_operators,
+        terminal_operators=terminal_operators,
+        dtype=dtype,
+        rng=rng
+    )
+    tree = Tree(root=root)
+
+    return Solution(tree=tree, objectives=objectives)
+
+
+def grow_tree(max_depth, basis_operators, terminal_operators, dtype, rng):
+    """Helper function to build the tree of Nodes for :func:`grow`.
+
+    :param max_depth: The maximum tree depth from root to leaf.
+    :type max_depth: int
+
+    :param basis_operators:
+        The OperatorTable of basis operators which, together with
+        *terminal_operators*, satisfy the closure property.
+
+    :type basis_operators:
+        zoonomia.solution.OperatorTable[zoonomia.solution.Operator]
+
+    :param terminal_operators:
+        The OperatorTable of terminal operators which, together with
+        *basis_operators*, satisfy the closure property.
+
+    :type terminal_operators:
+        zoonomia.solution.OperatorTable[zoonomia.solution.Operator]
+
+    :param dtype:
+        The return type of the resulting solution's functional representation.
+
+    :type dtype: Type | ParametrizedType
+
+    :param rng: A random number generator instance.
+    :type rng: random.Random
+
+    :return: The root node of a tree built using the *grow* strategy.
+    :rtype: zoonomia.tree.Node
 
     """
     if max_depth <= 1:
@@ -177,9 +263,7 @@ def grow(
 
         parents = children
 
-    tree = Tree(root=root)
-
-    return Solution(tree=tree, objectives=objectives)
+    return root
 
 
 def ramped_half_and_half(
@@ -190,11 +274,9 @@ def ramped_half_and_half(
     population initialization procedure. See Koza1992.
 
     :param max_depth: the max tree depth per individual.
-
     :type max_depth: int
 
     :param population_size: number of individuals in the population.
-
     :type population_size: int
 
     :param basis_operators:
@@ -222,19 +304,17 @@ def ramped_half_and_half(
     :type objectives: tuple[zoonomia.solution.Objective]
 
     :param rng: A random number generator instance.
-
     :type rng: random.Random
 
     :return:
-
-    :rtype: frozenset
+    :rtype: tuple
 
     """
     counts = _random_depth_counts(
         max_depth=max_depth, population_size=population_size, rng=rng
     )
 
-    return frozenset(
+    return tuple(
         _ramped_half_and_half_generator(
             counts=counts,
             basis_operators=basis_operators,
@@ -244,168 +324,6 @@ def ramped_half_and_half(
             rng=rng
         )
     )
-
-
-def mutate_subtree(
-    solution, max_depth, basis_operators, terminal_operators, rng
-):
-    """Perform subtree mutation on a solution by randomly selecting a Node and
-    replacing it (and all its descendants) with a subtree of depth *max_depth*
-    generated by the ramped_half_and_half method.
-
-    This is accomplished by conducting a pre-order traversal until we reach a
-    randomly-chosen depth, and choosing (randomly) a branch at that depth to
-    serve as the sacrificial node. We then generate a tree of depth
-
-    :param solution: A solution.
-
-    :type solution: zoonomia.solution.Solution
-
-    :param max_depth: The max tree depth for the subtree.
-
-    :type max_depth: int
-
-    :param basis_operators: An OperatorTable of basis Operators.
-
-    :type basis_operators: OperatorTable
-
-    :param terminal_operators: An OperatorTable of terminal Operators.
-
-    :type terminal_operators: OperatorTable
-
-    :param rng: A random number generator instance.
-
-    :type rng: random.Random
-
-    :return: A mutant solution.
-
-    :rtype: zoonomia.solution.Solution
-
-    """
-    dimensions = solution.tree.get_dimensions()
-    target_depth = rng.choice(range(len(dimensions) - 1))
-    target_branch = rng.choice(range(dimensions[target_depth]))
-
-    branch = 0
-    root = None
-    previous = None
-    stack = []
-    for node in solution.tree.pre_order_iter():
-        if node.depth == target_depth:
-            if branch == target_branch:
-                root = copy.deepcopy(node)
-                previous = root
-        elif node.depth > target_depth:
-            previous.add_child(node, position)
-
-# post-order
-#            7
-#          /   \
-#         2     6
-#       /  \   /  \
-#      1    3  4   5
-
-# pre-order
-#            1
-#          /   \
-#         2     5
-#       /  \   /  \
-#      3    4  6   7
-
-
-def mutate_interior_node(solution, basis_operators, rng):
-    """Perform a point mutation on a solution by replacing a randomly-chosen
-    interior node with a new Node having an Operator chosen at random from
-    *basis_operators*. Returns a new mutant solution.
-
-    :param solution: A solution.
-
-    :type solution: zoonomia.solution.Solution
-
-    :param basis_operators: An OperatorTable of basis Operators.
-
-    :type basis_operators: OperatorTable
-
-    :param rng: A random number generator instance.
-
-    :type rng: random.Random
-
-    :return: A mutant solution.
-
-    :rtype: zoonomia.solution.Solution
-
-    """
-    raise NotImplementedError()  # FIXME: implement
-
-
-def mutate_leaf_node(solution, terminal_operators, rng):
-    """Perform a point mutation on a solution by replacing a randomly-chosen
-    leaf node with a new Node having an Operator chosen at random from
-    *terminal_operators*. Returns a new mutant solution.
-
-    :param solution: A solution.
-
-    :type solution: zoonomia.solution.Solution
-
-    :param terminal_operators: An OperatorTable of terminal Operators.
-
-    :type terminal_operators: OperatorTable
-
-    :param rng: A random number generator instance.
-
-    :type rng: random.Random
-
-    :return: A mutant solution.
-
-    :rtype: zoonomia.solution.Solution
-
-    """
-    raise NotImplementedError()  # FIXME: implement
-
-
-def crossover_subtree(solution_1, solution_2):
-    """Perform subtree crossover between two solutions.
-
-    :param solution_1: A solution.
-    :type solution_1: zoonomia.solution.Solution
-
-    :param solution_2: Another solution.
-    :type solution_2: zoonomia.solution.Solution
-
-    :return: Two mutant solution offspring.
-
-    :rtype: tuple[zoonomia.solution.Solution]
-
-    """
-    raise NotImplementedError()  # FIXME: implement
-
-
-def tournament_select(solution_1, solution_2, rng):  # TODO: clean up docs
-    """Perform multi-objective tournament selection between two candidate
-    solutions. This is basically just a toy, there are much better selection
-    algorithms than tournament selection. It's the only selection operator
-    included with Zoonomia. You are encouraged to implement your own!
-
-    :param solution_1: A candidate solution.
-    :type solution_1: zoonomia.solution.Solution
-
-    :param solution_2: Another candidate solution.
-    :type solution_2: zoonomia.solution.Solution
-
-    :param rng: A random number generator instance.
-    :type rng: random.Random
-
-    :return: The solution which wins the tournament.
-
-    :rtype: zoonomia.solution.Solution
-
-    """
-    if solution_1 > solution_2:
-        return solution_1
-    elif solution_1 < solution_2:
-        return solution_2
-    else:  # TODO: maybe make a more nuanced decision here?
-        return rng.choice((solution_1, solution_2))
 
 
 def _ramped_half_and_half_generator(
@@ -440,3 +358,163 @@ def _random_depth_counts(max_depth, population_size, rng):
     for _ in range(population_size):
         counts[rng.choice(tuple(counts.keys()))] += 1
     return counts
+
+
+def mutate_subtree(
+    solution, max_depth, basis_operators, terminal_operators, rng
+):
+    """Perform subtree mutation on a solution by randomly selecting a Node and
+    replacing it (and all its descendants) with a subtree of depth *max_depth*.
+
+    :param solution: A solution.
+    :type solution: zoonomia.solution.Solution
+
+    :param max_depth: The max tree depth for the subtree.
+    :type max_depth: int
+
+    :param basis_operators: An OperatorTable of basis Operators.
+    :type basis_operators: OperatorTable
+
+    :param terminal_operators: An OperatorTable of terminal Operators.
+    :type terminal_operators: OperatorTable
+
+    :param rng: A random number generator instance.
+    :type rng: random.Random
+
+    :return: A mutant solution.
+    :rtype: zoonomia.solution.Solution
+
+    """
+    mutant = copy.deepcopy(solution.tree)
+
+    dimensions = mutant.get_dimensions()
+    target_idx = rng.randint(0, sum(dimensions) - 1)
+
+    mutation_root = mutant[target_idx]
+    mutation_parent = mutation_root.parent
+    mutation_position = mutation_root.position
+    del mutant[target_idx]
+
+    if rng.getrandbits(1):
+        mutation = full_tree(
+            max_depth=max_depth,
+            basis_operators=basis_operators,
+            terminal_operators=terminal_operators,
+            dtype=mutant.operator.signature[mutation_position],
+            rng=rng
+        )
+    else:
+        mutation = grow_tree(
+            max_depth=max_depth,
+            basis_operators=basis_operators,
+            terminal_operators=terminal_operators,
+            dtype=mutant.operator.signature[mutation_position],
+            rng=rng
+        )
+
+    mutation_parent.add_child(position=mutation_position, child=mutation)
+
+    return Solution(
+        tree=mutant, objectives=solution.objectives, map_=solution.map
+    )
+
+
+def mutate_interior_node(solution, basis_operators, rng):
+    """Perform a point mutation on a solution by replacing a randomly-chosen
+    interior node with a new Node having an Operator chosen at random from
+    *basis_operators*. Returns a new mutant solution.
+
+    :param solution: A solution.
+    :type solution: zoonomia.solution.Solution
+
+    :param basis_operators: An OperatorTable of basis Operators.
+    :type basis_operators: OperatorTable
+
+    :param rng: A random number generator instance.
+    :type rng: random.Random
+
+    :return: A mutant solution.
+    :rtype: zoonomia.solution.Solution
+
+    """
+    mutant = copy.deepcopy(solution.tree)
+
+    dimensions = mutant.get_dimensions()
+
+    if len(dimensions) < 3:  # there are no interior nodes to mutate, so no-op
+        return mutant
+
+    target_depth = rng.randint(0, len(dimensions) - 2)  # not a leaf
+    target_branch = rng.randint(0, dimensions[target_depth])
+
+    mutation_site = mutant[(target_depth, target_branch)]
+    site_parent = mutation_site.parent
+    site_position = mutation_site.position
+    site_left = mutation_site.left
+    site_right = mutation_site.right
+
+
+
+
+def mutate_leaf_node(solution, terminal_operators, rng):
+    """Perform a point mutation on a solution by replacing a randomly-chosen
+    leaf node with a new Node having an Operator chosen at random from
+    *terminal_operators*. Returns a new mutant solution.
+
+    :param solution: A solution.
+    :type solution: zoonomia.solution.Solution
+
+    :param terminal_operators: An OperatorTable of terminal Operators.
+    :type terminal_operators: OperatorTable
+
+    :param rng: A random number generator instance.
+    :type rng: random.Random
+
+    :return: A mutant solution.
+    :rtype: zoonomia.solution.Solution
+
+    """
+    raise NotImplementedError()  # FIXME: implement
+
+
+def crossover_subtree(solution_1, solution_2):
+    """Perform subtree crossover between two solutions.
+
+    :param solution_1: A solution.
+    :type solution_1: zoonomia.solution.Solution
+
+    :param solution_2: Another solution.
+    :type solution_2: zoonomia.solution.Solution
+
+    :return: Two mutant solution offspring.
+    :rtype: tuple[zoonomia.solution.Solution]
+
+    """
+    raise NotImplementedError()  # FIXME: implement
+
+
+def tournament_select(solution_1, solution_2, rng):  # TODO: clean up docs
+    """Perform multi-objective tournament selection between two candidate
+    solutions. This is basically just a toy, there are much better selection
+    algorithms than tournament selection. It's the only selection operator
+    included with Zoonomia. You are encouraged to implement your own!
+
+    :param solution_1: A candidate solution.
+    :type solution_1: zoonomia.solution.Solution
+
+    :param solution_2: Another candidate solution.
+    :type solution_2: zoonomia.solution.Solution
+
+    :param rng: A random number generator instance.
+    :type rng: random.Random
+
+    :return: The solution which wins the tournament.
+    :rtype: zoonomia.solution.Solution
+
+    """
+    if solution_1 > solution_2:
+        return solution_1
+    elif solution_1 < solution_2:
+        return solution_2
+    else:  # TODO: maybe make a more nuanced decision here?
+        return rng.choice((solution_1, solution_2))

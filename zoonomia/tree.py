@@ -12,17 +12,16 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import logging
 from queue import Queue
 from collections import Counter
 from threading import RLock
 
+from pydot import Graph, Node as GraphNode, Edge as GraphEdge
+
 from zoonomia.lang import Symbol
 
-log = logging.getLogger(__name__)  # FIXME
 
-
-def calls_iter(tree, result_formatter):
+def iter_calls(tree, result_formatter):
     """Returns an Iterator over the *tree* which emits *Call* objects
     representing abstract function calls.
 
@@ -68,7 +67,7 @@ def calls_iter(tree, result_formatter):
             call_count += 1
 
 
-def symbols_iter(tree):
+def iter_symbols(tree):
     """Returns an Iterator over the *tree* which emits *Symbol* objects, one
     for each of the terminal nodes.
 
@@ -94,21 +93,12 @@ class Node(object):
     candidate solutions in Zoonomia. A tree is composed by linking nodes
     together using the *add_child* method.
 
-    .. warning::
-        Nodes are not intended to be thread safe. You should construct
-        tree structures from a single thread and only when you are done
-        mutating the structure should the root node be passed into the
-        constructor of zoonomia.tree.Tree.
-
-    .. warning::
-        Nodes are not meant to be shared between trees. You should compose
-        a tree structure from Node objects in a single thread, pass the
-        root node to the zoonomia.tree.Tree constructor, and never again
-        touch or use any of those Nodes.
-
     """
 
-    __slots__ = ('operator', 'dtype', 'left', '_right', 'right', 'depth')
+    __slots__ = (
+        'operator', 'dtype', 'left', '_right', 'right', 'parent', 'depth',
+        'position', '_lock'
+    )
 
     def __init__(self, operator):
         """A node holds a reference to an operator. Optionally, a node can hold
@@ -126,23 +116,31 @@ class Node(object):
         self.left = None
         self._right = [None for _ in range(len(self.operator.signature) - 1)]
         self.right = None
+        self.parent = None
         self.depth = 0
+        self.position = 0
+        self._lock = RLock()
 
     def __getstate__(self):
-        return {
-            'operator': self.operator,
-            'left': self.left,
-            '_right': self._right,
-            'right': self.right,
-            'depth': self.depth
-        }
+        with self._lock:
+            return {
+                'operator': self.operator,
+                'left': self.left,
+                '_right': self._right,
+                'right': self.right,
+                'parent': self.parent,
+                'depth': self.depth
+            }
 
     def __setstate__(self, state):
         self.__init__(state['operator'])
-        self.left = state['left']
-        self._right = state['_right']
-        self.right = state['right']
-        self.depth = state['depth']
+
+        with self._lock:
+            self.left = state['left']
+            self._right = state['_right']
+            self.right = state['right']
+            self.parent = state['parent']
+            self.depth = state['depth']
 
     def add_child(self, child, position):
         """Add a child to this node corresponding to a *position* in the
@@ -162,65 +160,111 @@ class Node(object):
 
         :raise TypeError:
             If child's dtype doesn't match the operator's signature at the
-            given position.
+            given position or if a child is already present at that position.
 
         :raise IndexError:
             If child's signature does not contain an index corresponding to the
             given position.
 
         """
-        if child.dtype not in self.operator.signature[position]:
-            raise TypeError(
-                (
-                    'child dtype {0} does not match operator {1} signature at '
-                    'position {2}'
-                ).format(
-                    repr(child.dtype), repr(self.operator), position
+        with self._lock:
+            if child.dtype not in self.operator.signature[position]:
+                raise TypeError(
+                    (
+                        'child dtype {0} does not match operator {1} signature '
+                        'at position {2}'
+                    ).format(
+                        repr(child.dtype), repr(self.operator), position
+                    )
                 )
-            )
-        elif position == 0:
-            self.left = child
-        else:
-            self._right[position - 1] = child
-            self.right = tuple(reversed(self._right))
-        child.depth = self.depth + 1
+            elif position == 0:
+                if self.left is not None:
+                    raise TypeError(
+                        'child {0} already present at position 0'.format(
+                            repr(self.left)
+                        )
+                    )
 
-    def __hash__(self):
-        """Compute the integer hashcode for this node instance.
+                child.parent = self
+                self.left = child
+            else:
+                if self._right[position - 1] is not None:
+                    raise TypeError(
+                        'child {0} already present at position {1}'.format(
+                            repr(self._right[position - 1]), position
+                        )
+                    )
 
-        .. warning::
-            Do not rely on a node's hash value until you are finished adding
-            children.
+                child.position = position
+                child.parent = self
+                self._right[position - 1] = child
+                self.right = tuple(reversed(self._right))
+            child.depth = self.depth + 1
 
-        :return: An integer hash value.
-        :rtype: int
+    def remove_child(self, position):
+        """Removes the child at the given position.
+
+        :param position:
+            The position, corresponding to an element of the operator's
+            signature, to remove a child from.
+
+        :type position: int
 
         """
-        return hash((
-            'Node', self.operator, hash(self.left), hash(self.right), self.depth
-        ))
+        with self._lock:
+            if position == 0:
+                child = self.left
 
-    def __eq__(self, other):
-        return (
-            self.operator == other.operator and
-            self.left == other.left and
-            self.right == other.right and
-            self.depth == other.depth
-        )
+                if child is not None:
+                    child.parent = None
+
+                self.left = None
+            else:
+                child = self._right[position - 1]
+
+                if child is not None:
+                    child.parent = None
+
+                self._right[position - 1] = None
+                self.right = tuple(reversed(self._right))
+
+    def graph_node(self):
+        """Build the pydot.Node object corresponding to this tree node.
+
+        :return: A pydot graphviz Node object.
+        :rtype: pydot.Node
+
+        """
+        return GraphNode(name=self.operator.signature_str())
+
+    def __eq__(self, other):  # can't check parent because recursion
+        if isinstance(other, Node):
+            with self._lock:
+                return (
+                    self.operator == other.operator and
+                    self.left == other.left and
+                    self.right == other.right and
+                    self.depth == other.depth
+                )
+        else:
+            return NotImplemented
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return (
-            'Node(operator={operator}, left={left}, right={right}, '
-            'depth={depth})'
-        ).format(
-            operator=repr(self.operator),
-            left=repr(self.left),
-            right=repr(self.right),
-            depth=repr(self.depth)
-        )
+        with self._lock:
+            return (
+                'Node(id={id}, operator={operator}, left={left}, right={right},'
+                ' parent={parent}, depth={depth})'
+            ).format(
+                id=id(self),
+                operator=repr(self.operator),
+                left=repr(self.left),
+                right=repr(self.right),
+                parent=repr(id(self.parent)),
+                depth=repr(self.depth)
+            )
 
 
 class Tree(object):
@@ -229,21 +273,15 @@ class Tree(object):
     instance is a "handle" which we can use to abstract away that complexity
     and actually use the tree to do work.
 
-    .. note::
-        While the Nodes which are used to construct a tree data structure are
-        not thread-safe, if you make sure that once a Tree is constructed
-        nothing will change its nodes you can be sure that the tree is
-        "effectively immutable" and therefore "safe".
-
     """
 
-    __slots__ = ('root', 'dtype', '_dimensions', '_lock', '_hash')
+    __slots__ = ('root', 'dtype', '_lock')
 
     def __init__(self, root):
         """A Tree instance is a thin wrapper around a tree data structure
-        composed of Nodes that supports post-order depth-first iteration over
-        all the nodes. You should ensure that the tree data structure is
-        fully-populated before you attempt iteration.
+        composed of Nodes that supports iteration over all the nodes and looking
+        up nodes by index. You should ensure that the tree data structure is
+        fully-populated before you construct a Tree instance.
 
         :param root:
             The root node of the tree data structure which this instance will
@@ -254,9 +292,7 @@ class Tree(object):
         """
         self.root = root
         self.dtype = root.dtype
-        self._dimensions = None
         self._lock = RLock()
-        self._hash = None
 
     def __getstate__(self):
         return {'root': self.root}
@@ -272,45 +308,46 @@ class Tree(object):
         :rtype: collections.Iterator[zoonomia.tree.Node]
 
         """
-        stack = [self.root]
-        last = None
+        with self._lock:
+            stack = [self.root]
+            last = None
 
-        while len(stack) > 0:
-            node = stack.pop()
+            while len(stack) > 0:
+                node = stack.pop()
 
-            if node.left is None:
-                # this is a terminal node
-                yield node
-            elif (
-                last is None
-            ) or (
-                node is last.left
-            ) or (
-                last.right is not None and node in last.right
-            ):
-                # moving down
-                stack.append(node)
-                stack.append(node.left)
-            elif last is node.left:
-                if node.right is None:
-                    # moving up on a unary branch
+                if node.left is None:
+                    # this is a terminal node
                     yield node
-                else:
-                    # moving up and to the right
-                    for right in node.right:
-                        stack.append(node)
-                        stack.append(right)
-            elif node.right is not None and last in node.right:
-                if last is node.right[0]:
-                    # we are on the right-most branch moving up and to the left
-                    yield node
-                else:
-                    # we are on an inner-right branch moving upwards
+                elif (
+                    last is None
+                ) or (
+                    node is last.left
+                ) or (
+                    last.right is not None and node in last.right
+                ):
+                    # moving down
                     stack.append(node)
+                    stack.append(node.left)
+                elif last is node.left:
+                    if node.right is None:
+                        # moving up on a unary branch
+                        yield node
+                    else:
+                        # moving up and to the right
+                        for right in node.right:
+                            stack.append(node)
+                            stack.append(right)
+                elif node.right is not None and last in node.right:
+                    if last is node.right[0]:
+                        # we are on the right-most branch moving up and left
+                        yield node
+                    else:
+                        # we are on an inner-right branch moving upwards
+                        stack.append(node)
 
-            last = node
+                last = node
 
-    def pre_order_iter(self):
+    def iter_pre_order(self):
         """Returns a pre-order depth-first iterator over all the nodes in this
         tree.
 
@@ -318,58 +355,60 @@ class Tree(object):
         :rtype: collections.Iterator[zoonomia.tree.Node]
 
         """
-        stack = [self.root]
-        last = None
+        with self._lock:
+            stack = [self.root]
+            last = None
 
-        while len(stack) > 0:
-            node = stack.pop()
+            while len(stack) > 0:
+                node = stack.pop()
 
-            if node.left is None:
-                # this is a terminal node
-                yield node
-            elif (
-                last is None
-            ) or (
-                node is last.left
-            ) or (
-                last.right is not None and node in last.right
-            ):
-                # moving down
-                stack.append(node)
-                stack.append(node.left)
-                yield node
-            elif last is node.left:
-                if node.right is not None:
-                    # moving up and to the right
-                    for right in node.right:
-                        stack.append(node)
-                        stack.append(right)
-            elif node.right is not None and last in node.right:
-                if last is not node.right[0]:
-                    # we are on an inner-right branch moving upwards
+                if node.left is None:
+                    # this is a terminal node
+                    yield node
+                elif (
+                    last is None
+                ) or (
+                    node is last.left
+                ) or (
+                    last.right is not None and node in last.right
+                ):
+                    # moving down
                     stack.append(node)
+                    stack.append(node.left)
+                    yield node
+                elif last is node.left:
+                    if node.right is not None:
+                        # moving up and to the right
+                        for right in node.right:
+                            stack.append(node)
+                            stack.append(right)
+                elif node.right is not None and last in node.right:
+                    if last is not node.right[0]:
+                        # we are on an inner-right branch moving upwards
+                        stack.append(node)
 
-            last = node
+                last = node
 
-    def bfs_iter(self):
+    def iter_bfs(self):
         """Returns a breadth-first iterator over all the nodes in this tree.
 
         :return: A breadth-first iterator over this tree.
         :rtype: collections.Iterator[zoonomia.tree.Node]
 
         """
-        q = Queue()
-        q.put(self.root)
+        with self._lock:
+            q = Queue()
+            q.put(self.root)
 
-        while not q.empty():
-            node = q.get()
-            yield node
+            while not q.empty():
+                node = q.get()
+                yield node
 
-            if node.left is not None:
-                q.put(node.left)
-                if node.right is not None:
-                    for right in reversed(node.right):
-                        q.put(right)
+                if node.left is not None:
+                    q.put(node.left)
+                    if node.right is not None:
+                        for right in reversed(node.right):
+                            q.put(right)
 
     def get_dimensions(self):
         """Returns a tuple of int values indicating number of nodes at a given
@@ -380,14 +419,43 @@ class Tree(object):
         :rtype: tuple[int]
 
         """
-        if self._dimensions is None:
-            with self._lock:
-                if self._dimensions is None:
-                    counter = Counter(node.depth for node in self.bfs_iter())
-                    self._dimensions = tuple(
-                        counter.get(key) for key in sorted(counter.keys())
-                    )
-        return self._dimensions
+        with self._lock:
+            counter = Counter(node.depth for node in self.iter_bfs())
+            return tuple(
+                counter.get(key) for key in sorted(counter.keys())
+            )
+
+    def graph(self):
+        """Build the pydot graphviz graph corresponding to this tree. You can
+        use this graph to visualize the tree with a graphviz renderer.
+
+        :return: The pydot graphviz Graph corresponding to this tree.
+        :rtype: pydot.Graph
+
+        """
+        with self._lock:
+            graph = Graph(graph_name=self.root.operator.signature_str())
+            graph.add_node(graph_node=self.root.graph_node())
+
+            stack = []
+            for node in self:
+                if node.left is None:  # terminal node
+                    graph.add_node(graph_node=node.graph_node())
+                    stack.append(node)
+                else:  # basis node
+                    graph.add_node(graph_node=node.graph_node())
+                    for _ in range(len(node.operator.signature)):
+                        terminal_node = stack.pop()
+
+                        graph.add_edge(
+                            graph_edge=GraphEdge(
+                                src=node.operator.signature_str(),
+                                dst=terminal_node.operator.signature_str()
+                            )
+                        )
+                    stack.append(node)
+
+            return graph
 
     def __len__(self):
         """Returns the total number of nodes in the tree.
@@ -398,19 +466,104 @@ class Tree(object):
         """
         return sum(self.get_dimensions())
 
-    def __hash__(self):
-        if self._hash is None:
-            with self._lock:
-                if self._hash is None:
-                    hashes = tuple(hash(node) for node in self)
-                    self._hash = hash(('Tree', hashes))
-        return self._hash
-
     def __eq__(self, other):
-        return all(s == o for s, o in zip(self, other))
+        if isinstance(other, Tree):
+            with self._lock:
+                return all(s == o for s, o in zip(self, other))
+        else:
+            return NotImplemented
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
     def __repr__(self):
         return 'Tree(root={root})'.format(root=repr(self.root))
+
+    def __getitem__(self, key):
+        """A tree can be indexed into with an int or a 2-tuple of ints. This
+        method returns the node at the given index.
+
+        .. warning::
+            This method is linear in the number of nodes in the tree.
+
+        :param key:
+            If integer, signifies the position corresponding to a pre-order
+            labelling of the tree. If tuple (x, y), return the yth node at depth
+            x where y is computed in a breadth-first manner (left to right).
+
+        :type key: int | tuple[int]
+
+        :raise IndexError: if the key is out of bounds.
+
+        :raise TypeError: if the key is formatted improperly.
+
+        :return: The node at the given position.
+        :rtype: Node
+
+        """
+        if isinstance(key, int):
+            with self._lock:
+                if key < 0:
+                    raise IndexError('key {0} is out of bounds.'.format(key))
+
+                for idx, node in enumerate(self.iter_pre_order()):
+                    if idx == key:
+                        return node
+
+                raise IndexError('key {0} is out of bounds.'.format(key))
+        elif isinstance(key, tuple):
+            if len(key) != 2:
+                raise TypeError(
+                    'tuple key {0} must have two integer elements'.format(key)
+                )
+            else:
+                with self._lock:
+                    x = key[0]
+                    y = key[1]
+
+                    if x < 0 or y < 0:
+                        raise IndexError(
+                            'key {0} is out of bounds.'.format(key)
+                        )
+
+                    for node in self.iter_bfs():
+                        if node.depth == x and node.position == y:
+                            return node
+
+                    raise IndexError('key {0} is out of bounds.'.format(key))
+        else:
+            raise TypeError(
+                'key {0} must be an integer or 2-tuple of integers'.format(key)
+            )
+
+    def __delitem__(self, key):
+        """A tree can be indexed into with an int or a 2-tuple of ints. This
+        method removes the node at the given index.
+
+        .. note::
+            You cannot delete the root node, so this method will raise
+            IndexError if called with keys 0 or (0, 0).
+
+        .. warning::
+            This method is linear in the number of nodes in the tree.
+
+        :param key:
+            If integer, signifies the position corresponding to a pre-order
+            labelling of the tree. If tuple (x, y), return the yth node at depth
+            x where y is computed in a breadth-first manner (left to right).
+
+        :type key: int | tuple[int]
+
+        :raise IndexError: if the key is out of bounds.
+
+        :raise TypeError: if the key is formatted improperly.
+
+        """
+        with self._lock:
+            node = self[key]
+
+            if node.parent is not None:
+                parent = node.parent
+                parent.remove_child(node.position)
+            else:  # node is root
+                raise IndexError('Cannot delete the root node.')

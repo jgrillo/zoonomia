@@ -65,11 +65,13 @@ type *Collection<Number>*, or even values of type *Collection<Int>*!
 
 """
 
-from threading import RLock
+from functools import lru_cache
+
+TYPE_CACHE_SIZE = 16  # FIXME: tune
 
 
 class Type(object):
-    __slots__ = ('name', 'contained_types', 'meta', '_hash', '_cache', '_lock')
+    __slots__ = ('name', 'contained_types', 'meta', '_hash')
 
     def __init__(self, name, contained_types=frozenset(), meta=None):
         """A generic type is constructed with a name and a frozenset of
@@ -101,8 +103,6 @@ class Type(object):
         self._hash = hash(
             ('Type', self.name, self.contained_types, self.meta)
         )
-        self._cache = set()
-        self._lock = RLock()
 
     def __getstate__(self):
         return {
@@ -125,11 +125,12 @@ class Type(object):
                 self.meta == other.meta
             )
         else:
-            return False
+            return NotImplemented
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    @lru_cache(maxsize=TYPE_CACHE_SIZE, typed=True)
     def __contains__(self, candidate):
         """Check whether this type can be resolved to a type *candidate*.
 
@@ -148,38 +149,31 @@ class Type(object):
         :rtype: bool
 
         """
-        with self._lock:
-            if candidate in self._cache:
+        if isinstance(candidate, ParametrizedType):
+            if candidate.base_type in self:
                 return True
-            elif isinstance(candidate, ParametrizedType):
-                if candidate.base_type in self:
-                    self._cache.add(candidate)
+            else:
+                return False
+        elif isinstance(candidate, Type):
+            if candidate == self:
+                return True
+            else:
+                if any(candidate in t for t in self.contained_types):
+                    return True
+                elif (
+                    len(candidate.contained_types) > 0 and all(
+                        t in self for t in candidate.contained_types
+                    )
+                ):
                     return True
                 else:
                     return False
-            elif isinstance(candidate, Type):
-                if candidate == self:
-                    self._cache.add(candidate)
-                    return True
-                else:
-                    if any(candidate in t for t in self.contained_types):
-                        self._cache.add(candidate)
-                        return True
-                    elif (
-                        len(candidate.contained_types) > 0 and all(
-                            t in self for t in candidate.contained_types
-                        )
-                    ):
-                        self._cache.add(candidate)
-                        return True
-                    else:
-                        return False
-            else:
-                raise TypeError(
-                    'candidate must be a Type or ParametrizedType: {0}'.format(
-                        repr(candidate)
-                    )
+        else:
+            raise TypeError(
+                'candidate must be a Type or ParametrizedType: {0}'.format(
+                    repr(candidate)
                 )
+            )
 
     def __repr__(self):
         return (
@@ -193,10 +187,7 @@ class Type(object):
 
 class ParametrizedType(object):
 
-    __slots__ = (
-        'name', 'base_type', 'parameter_types', 'meta', '_hash', '_cache',
-        '_lock'
-    )
+    __slots__ = ('name', 'base_type', 'parameter_types', 'meta', '_hash')
 
     def __init__(self, name, base_type, parameter_types, meta=None):
         """A ParametrizedType is constructed with a *name*, a Type *base_type*,
@@ -243,8 +234,6 @@ class ParametrizedType(object):
             self.parameter_types,
             self.meta
         ))
-        self._cache = set()
-        self._lock = RLock()
 
     def __getstate__(self):
         return {
@@ -274,11 +263,12 @@ class ParametrizedType(object):
                 self.meta == other.meta
             )
         else:
-            return False
+            return NotImplemented
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    @lru_cache(maxsize=TYPE_CACHE_SIZE, typed=True)
     def __contains__(self, candidate):
         """Check whether this type can be resolved to a type *candidate*.
 
@@ -297,35 +287,30 @@ class ParametrizedType(object):
         :rtype: bool
 
         """
-        with self._lock:
-            if candidate in self._cache:
+        if isinstance(candidate, ParametrizedType):
+            if candidate == self:
                 return True
-            elif isinstance(candidate, ParametrizedType):
-                if candidate == self:
-                    self._cache.add(candidate)
+            elif (
+                candidate.base_type in self.base_type and
+                len(candidate.parameter_types) == len(self.parameter_types)
+                and len(candidate.parameter_types) > 0
+            ):
+                if all(c in t for c, t in zip(
+                    candidate.parameter_types, self.parameter_types
+                )):
                     return True
-                elif (
-                    candidate.base_type in self.base_type and
-                    len(candidate.parameter_types) == len(self.parameter_types)
-                    and len(candidate.parameter_types) > 0
-                ):
-                    if all(c in t for c, t in zip(
-                        candidate.parameter_types, self.parameter_types
-                    )):
-                        self._cache.add(candidate)
-                        return True
-                    else:
-                        return False
                 else:
                     return False
-            elif isinstance(candidate, Type):
-                return False
             else:
-                raise TypeError(
-                    'candidate must be a Type or ParametrizedType: {0}'.format(
-                        repr(candidate)
-                    )
+                return False
+        elif isinstance(candidate, Type):
+            return False
+        else:
+            raise TypeError(
+                'candidate must be a Type or ParametrizedType: {0}'.format(
+                    repr(candidate)
                 )
+            )
 
     def __repr__(self):
         return (
