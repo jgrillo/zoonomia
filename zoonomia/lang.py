@@ -14,7 +14,7 @@
 
 from threading import Lock
 
-from zoonomia.types import Type, ParametrizedType
+from zoonomia.types import Type, ParametrizedType, TypeCheckError
 
 
 class Symbol(object):
@@ -153,9 +153,12 @@ class Operator(object):
 
         :type args: tuple[Symbol|Call]
 
+        :raise TypeCheckError:
+            if any of the args doesn't match this operator's signature.
+
         :raise TypeError:
-            If args doesn't match signature or if target is absent and args are
-            present (i.e. this is a basis operator and args are absent).
+            if target is absent and args are present (i.e. this is a basis
+            operator and args are absent).
 
         :return:
             Abstract representation of a function call.
@@ -165,9 +168,9 @@ class Operator(object):
         """
         if args is not None and target is not None:
             if len(args) != len(self.signature):
-                raise TypeError('args and signature must have same size.')
-            elif not all(a.dtype in s for a, s in zip(args, self.signature)):
-                raise TypeError('arg types must match the signature.')
+                raise TypeCheckError('args and signature must have same size.')
+            elif any(a.dtype not in s for a, s in zip(args, self.signature)):
+                raise TypeCheckError('arg types must match the signature.')
             else:
                 return Call(target=target, operator=self, args=args)
         elif args is None and target is None:
@@ -310,6 +313,8 @@ class OperatorTable(object):
         :return: An OperatorTable
         :rtype: OperatorTable
 
+        :raise TypeError: if other is not an OperatorTable.
+
         """
         if isinstance(other, OperatorTable):
             return OperatorTable(
@@ -334,15 +339,13 @@ class OperatorTable(object):
         contained by *dtype*.
 
         :param dtype: A type.
-
         :type dtype: Type | ParametrizedType
 
         :raise KeyError:
             If the given *dtype* has no associated operators in this
             OperatorTable.
 
-        :raise TypeError:
-            If *dtype* is not a Type or ParametrizedType.
+        :raise TypeError: if *dtype* is not a Type or ParametrizedType.
 
         :return:
             The Operators belonging to this OperatorTable for which the given
@@ -368,11 +371,9 @@ class OperatorTable(object):
         corresponding to the given *dtype*.
 
         :param dtype: A type.
-
         :type dtype: Type | ParametrizedType
 
-        :raise TypeError:
-            If *dtype* is not a Type or ParametrizedType.
+        :raise TypeError: if *dtype* is not a Type or ParametrizedType.
 
         :return:
             Whether this OperatorTable contains any Operators for which the

@@ -70,6 +70,14 @@ from functools import lru_cache
 TYPE_CACHE_SIZE = 16  # FIXME: tune
 
 
+class TypeCheckError(Exception):
+    """This exception is raised by code which uses types in this module if
+    that code expects types to check and they fail to do so.
+
+    """
+    pass
+
+
 class Type(object):
     __slots__ = ('name', 'contained_types', 'meta', '_hash')
 
@@ -93,8 +101,6 @@ class Type(object):
             Some (optional) metadata to associate with this type.
 
         :type meta: object
-
-        :raises TypeError: if :param:`contained_types` has length < 1.
 
         """
         self.name = name
@@ -139,8 +145,7 @@ class Type(object):
 
         :type candidate: Type | ParametrizedType
 
-        :raise TypeError:
-            if *candidate* is not a Type or ParametrizedType.
+        :raise TypeError: if *candidate* is not a Type or ParametrizedType.
 
         :return:
             True if the candidate type belongs to this generic type (i.e. if
@@ -277,8 +282,7 @@ class ParametrizedType(object):
 
         :type candidate: Type | ParametrizedType
 
-        :raise TypeError:
-            if *candidate* is not a Type or ParametrizedType.
+        :raise TypeError: if *candidate* is not a Type or ParametrizedType.
 
         :return:
             True if the candidate type belongs to this generic type (i.e. if

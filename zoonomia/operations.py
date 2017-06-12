@@ -454,8 +454,6 @@ def mutate_interior_node(solution, basis_operators, rng):
     site_right = mutation_site.right
 
 
-
-
 def mutate_leaf_node(solution, terminal_operators, rng):
     """Perform a point mutation on a solution by replacing a randomly-chosen
     leaf node with a new Node having an Operator chosen at random from

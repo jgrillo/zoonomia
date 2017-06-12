@@ -19,6 +19,7 @@ from threading import RLock
 from pydot import Graph, Node as GraphNode, Edge as GraphEdge
 
 from zoonomia.lang import Symbol
+from zoonomia.types import TypeCheckError
 
 
 def iter_calls(tree, result_formatter):
@@ -86,6 +87,42 @@ def iter_symbols(tree):
     for node in tree:
         if node.left is None:
             yield node.operator()
+
+
+def check_types_compatible(parent, child, position):
+    """Check that child's return type is compatible with the parent at the given
+    position. Returns None if compatible, raises otherwise.
+
+    :param parent: The parent node.
+    :type parent: Node
+
+    :param child: The child node.
+    :type child: Node
+
+    :param position: The parent's signature position to test.
+    :type position: int
+
+    :raises TypeCheckError:
+        if child cannot be attached to parent at the given position due to a
+        type signature incompatibility.
+
+    """
+    if len(parent.operator.signature) >= position + 1:
+        if child.dtype not in parent.operator.signature[position]:
+            raise TypeCheckError(
+                'child {0} does not match parent {1} at position {2}'.format(
+                    child.operator.signature_str(),
+                    parent.operator.signature_str(),
+                    position
+                )
+            )
+    else:
+        raise TypeCheckError(
+            'Parent signature {0} does not contain position {1}'.format(
+                parent.operator.signature_str(),
+                position
+            )
+        )
 
 
 class Node(object):
@@ -158,28 +195,19 @@ class Node(object):
 
         :type position: int
 
-        :raise TypeError:
-            If child's dtype doesn't match the operator's signature at the
-            given position or if a child is already present at that position.
-
-        :raise IndexError:
-            If child's signature does not contain an index corresponding to the
+        :raise TypeCheckError:
+            if child's dtype doesn't match the operator's signature at the
             given position.
+
+        :raise ValueError: if a child is already present at that position.
 
         """
         with self._lock:
-            if child.dtype not in self.operator.signature[position]:
-                raise TypeError(
-                    (
-                        'child dtype {0} does not match operator {1} signature '
-                        'at position {2}'
-                    ).format(
-                        repr(child.dtype), repr(self.operator), position
-                    )
-                )
-            elif position == 0:
+            check_types_compatible(self, child, position)
+
+            if position == 0:
                 if self.left is not None:
-                    raise TypeError(
+                    raise ValueError(
                         'child {0} already present at position 0'.format(
                             repr(self.left)
                         )
@@ -189,7 +217,7 @@ class Node(object):
                 self.left = child
             else:
                 if self._right[position - 1] is not None:
-                    raise TypeError(
+                    raise ValueError(
                         'child {0} already present at position {1}'.format(
                             repr(self._right[position - 1]), position
                         )
@@ -516,6 +544,10 @@ class Tree(object):
                 raise TypeError(
                     'tuple key {0} must have two integer elements'.format(key)
                 )
+            elif not isinstance(key[0], int) or not isinstance(key[1], int):
+                raise TypeError(
+                    'tuple key {0} must contain integer elements'.format(key)
+                )
             else:
                 with self._lock:
                     x = key[0]
@@ -536,6 +568,120 @@ class Tree(object):
                 'key {0} must be an integer or 2-tuple of integers'.format(key)
             )
 
+    def __setitem__(self, key, value):  # FIXME: test
+        """A tree can be indexed into with an int or a 2-tuple of ints. This
+        method inserts a node at the given index. While you can mutate a tree by
+        manually calling :py:method::`zoonomia.tree.Node.remove_child` and
+        :py:method::`zoonomia.tree.Node.add_child` on its underlying nodes, you
+        should use this method instead as it performs additional checks which
+        will ensure the tree is left in a consistent state even if an error is
+        encountered.
+
+        .. warning::
+            This method is linear in the number of nodes in the tree.
+
+        :param key:
+            If integer, signifies the position corresponding to a pre-order
+            labelling of the tree. If tuple (x, y), return the yth node at depth
+            x where y is computed in a breadth-first manner (left to right).
+
+        :type key: int | tuple[int]
+
+        :param value: The node to insert at the given index.
+        :type value: Node
+
+        :raise IndexError: if the key is out of bounds.
+
+        :raise TypeError: if the key is formatted improperly.
+
+        :raise TypeCheckError:
+            if the value has improper type signature for insertion at the
+            location specified by the key.
+
+        """
+        if isinstance(key, int):
+            with self._lock:
+                if key < 0:
+                    raise IndexError('key {0} is out of bounds.'.format(key))
+
+                found = False
+                for idx, node in enumerate(self.iter_pre_order()):
+                    if idx == key:
+                        # perform type checks and mutate the tree
+                        found = self._mutate_tree_safely(node=node, value=value)
+
+                if not found:  # we didn't locate the node
+                    raise IndexError('key {0} is out of bounds.'.format(key))
+
+        elif isinstance(key, tuple):
+            if len(key) != 2:
+                raise TypeError(
+                    'tuple key {0} must have two elements'.format(key)
+                )
+            elif not isinstance(key[0], int) or not isinstance(key[1], int):
+                raise TypeError(
+                    'tuple key {0} must contain integer elements'.format(key)
+                )
+            else:
+                with self._lock:
+                    x = key[0]
+                    y = key[1]
+
+                    if x < 0 or y < 0:
+                        raise IndexError(
+                            'key {0} is out of bounds.'.format(key)
+                        )
+
+                    found = False
+                    for node in self.iter_bfs():
+                        if node.depth == x and node.position == y:
+                            # perform type checks and mutate the tree
+                            found = self._mutate_tree_safely(
+                                node=node, value=value
+                            )
+
+                    if not found: # we didn't locate the node
+                        raise IndexError(
+                            'key {0} is out of bounds.'.format(key)
+                        )
+        else:
+            raise TypeError(
+                'key {0} must be an integer or 2-tuple of integers'.format(key)
+            )
+
+    @staticmethod
+    def _mutate_tree_safely(node, value):
+        parent = node.parent
+
+        check_types_compatible(  # check parent
+            parent=parent, child=value, position=node.position
+        )
+
+        if node.left is not None:  # check left child
+            check_types_compatible(
+                parent=value, child=node.left, position=node.left.position
+            )
+
+        if node.right is not None:  # check right children
+            for pos, right in enumerate(node.right):
+                check_types_compatible(
+                    parent=value, child=right, position=right.position
+                )
+
+        # insert the new node
+        parent.remove_child(position=node.position)
+        parent.add_child(child=value, position=node.position)
+
+        # wire up the children if any exist
+        if node.left is not None:
+            value.add_child(child=node.left, position=0)
+
+            if node.right is not None:
+                for pos, right in enumerate(node.right):
+                    value.add_child(child=right, position=pos + 1)
+
+        return True
+
     def __delitem__(self, key):
         """A tree can be indexed into with an int or a 2-tuple of ints. This
         method removes the node at the given index.
@@ -546,6 +692,10 @@ class Tree(object):
 
         .. warning::
             This method is linear in the number of nodes in the tree.
+
+        .. warning::
+            This method can leave the tree in an inconsistent state--i.e. a
+            state where the iterator methods will fail.
 
         :param key:
             If integer, signifies the position corresponding to a pre-order
