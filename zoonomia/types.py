@@ -17,17 +17,23 @@
     1. *Type* -- a parameter-less generic type.
     2. *ParametrizedType* -- a parametrized generic type.
 
+There are 2 supporting characters to make parametrized generics work:
+
+    1. *Parameter* -- a generic parameter.
+    2. *Variance* -- an Enum which can take one of the values 'COVARIANT',
+    'INVARIANT', and 'CONTRAVARIANT'.
+
 Some terminology:
 
     1. We say type A *contains* another type B if we can safely substitute
     values having type B in places expecting values of type A.
-    2. We say a type D is *less general (more specific)* than type C if C
-    *contains* D. We say type C is *more general than* type D if type D cannot
-    contain type C.
+    2. We say a type C is *more specific* than a type D if D *contains* C.
+    3. We say a type E is *more general* than a type F if F *does not contain*
+    E and E *contains* F.
 
 *Type* is the most general kind of type. It subsumes *ParametrizedType*. Given
-this hierarchy of generics, we can construct a parametrized
-*collection_of_numbers* generic like this:
+this ordering of types, we can construct a parametrized *collection_of_numbers*
+generic like this:
 
 .. code-block:: python
     int_type = Type(name='Int')
@@ -63,13 +69,14 @@ this hierarchy of generics, we can construct a parametrized
     )
 
 In the above example, *Collection<Int>* is **not** contained by
-*Collection<Number>* because Zoonomia's parametrized types are *invariant* by
+*Collection<Number>* because Zoonomia's type parameters are *invariant* by
 default. However, both *Collection<Int>* and *Collection<Number>* are contained
 by *Collection*. If a place expects values of type *Collection* we can safely
 substitute values of type *Collection<Number>*, *Collection<Int>*, or
 Collection<Float>. If a place expects values of type *Collection<Number>* we can
 safely substitute values of type *Collection<Number>* only. However, Zoonomia
-supports something like a declaration-site variance specifier:
+supports an optional declaration-site variance specifier to relax this
+constraint:
 
 .. code-block:: python
     covariant_collection_of_numbers = ParametrizedType(
@@ -90,7 +97,10 @@ supports something like a declaration-site variance specifier:
 
 Now we have the happy circumstance that *Collection<? extends Number>* contains
 *Collection<Number>*, *Collection<Float>*, and *Collection<Int>*. Moreover,
-*Collection<? super Number>* contains nothing at all.
+*Collection<? super Number>* contains nothing at all, but if *Number* was a
+subtype of some type *Object* and we had defined a type *Collection<Object>*,
+it would then be safe to substitute values of *Collection<Object>* into places
+expecting *Collection<? super Number>*.
 
 Zoonomia's tree mutation operators maintain the following invariant:
 
