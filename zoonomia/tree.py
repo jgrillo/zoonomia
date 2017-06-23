@@ -277,9 +277,6 @@ class Node(object):
         else:
             return NotImplemented
 
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
     def __repr__(self):
         with self._lock:
             return (
@@ -501,9 +498,6 @@ class Tree(object):
         else:
             return NotImplemented
 
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
     def __repr__(self):
         return 'Tree(root={root})'.format(root=repr(self.root))
 
@@ -568,7 +562,7 @@ class Tree(object):
                 'key {0} must be an integer or 2-tuple of integers'.format(key)
             )
 
-    def __setitem__(self, key, value):  # FIXME: test
+    def __setitem__(self, key, value):  # FIXME: test -- this is broken
         """A tree can be indexed into with an int or a 2-tuple of ints. This
         method inserts a node at the given index. While you can mutate a tree by
         manually calling :py:method::`zoonomia.tree.Node.remove_child` and
@@ -640,7 +634,7 @@ class Tree(object):
                                 node=node, value=value
                             )
 
-                    if not found: # we didn't locate the node
+                    if not found:  # we didn't locate the node
                         raise IndexError(
                             'key {0} is out of bounds.'.format(key)
                         )
@@ -676,9 +670,9 @@ class Tree(object):
         if node.left is not None:
             value.add_child(child=node.left, position=0)
 
-            if node.right is not None:
-                for pos, right in enumerate(node.right):
-                    value.add_child(child=right, position=pos + 1)
+        if node.right is not None:
+            for pos, right in enumerate(node.right):
+                value.add_child(child=right, position=pos + 1)
 
         return True
 

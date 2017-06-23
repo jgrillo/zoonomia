@@ -55,9 +55,6 @@ class Symbol(object):
         else:
             return NotImplemented
 
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
     def __repr__(self):
         return 'Symbol(name={symbol}, dtype={dtype})'.format(
             symbol=repr(self.name), dtype=repr(self.dtype)
@@ -114,9 +111,6 @@ class Operator(object):
             )
         else:
             return NotImplemented
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
 
     def __repr__(self):
         return (
@@ -245,9 +239,6 @@ class Call(object):
         else:
             return NotImplemented
 
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
     def __repr__(self):
         return (
             'Call(target={target}, operator={operator}, args={args})'
@@ -299,9 +290,6 @@ class OperatorTable(object):
             return self.operators == other.operators
         else:
             return NotImplemented
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
 
     def union(self, other):
         """Returns an OperatorTable containing those elements which are members

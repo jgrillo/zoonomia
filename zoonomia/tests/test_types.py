@@ -56,7 +56,7 @@ class TestType(unittest.TestCase):
         type2 = Type(
             name=type1.name,
             meta=type1.meta,
-            contained_types=type1.contained_types
+            subtypes=type1.subtypes
         )
 
         self.assertEqual(type1, type2)
@@ -71,14 +71,14 @@ class TestType(unittest.TestCase):
             lambda t: Type(
                 name=t.name,
                 meta=t.meta,
-                contained_types=t.contained_types
+                subtypes=t.subtypes
             )
         ),
         st.shared(default_types(), key='test_type_eq_transitive').map(
             lambda t: Type(
                 name=t.name,
                 meta=t.meta,
-                contained_types=t.contained_types
+                subtypes=t.subtypes
             )
         )
     )
@@ -104,7 +104,7 @@ class TestType(unittest.TestCase):
         type2 = Type(
             name=type1.name,
             meta=type1.meta,
-            contained_types=type1.contained_types
+            subtypes=type1.subtypes
         )
 
         self.assertEqual(type1, type2)
@@ -133,7 +133,7 @@ class TestType(unittest.TestCase):
             lambda t: Type(
                 name=t.name,
                 meta=t.meta,
-                contained_types=t.contained_types
+                subtypes=t.subtypes
             )
         )
     )
@@ -172,7 +172,7 @@ class TestType(unittest.TestCase):
             lambda t: Type(
                 name=t.name,
                 meta=t.meta,
-                contained_types=t.contained_types
+                subtypes=t.subtypes
             )
         )
     )
@@ -190,13 +190,13 @@ class TestType(unittest.TestCase):
 
     def test_type_contains_another_type(self):
         """Test that another_type contains type1 when type1 is contained by any
-        of another_types's *contained_types*.
+        of another_types's *subtypes*.
 
         """
         type1 = Type(name='one', meta='meta')
         another_type = Type(
             name='Type1',
-            contained_types=frozenset((type1,)),
+            subtypes=frozenset((type1,)),
             meta='meta'
         )
 
@@ -206,7 +206,7 @@ class TestType(unittest.TestCase):
 
     def test_type_contains_other_type_2(self):
         """Test that a Type type1 contains another Type type2 when any of
-        type1's *contained_types* contain type2.
+        type1's *subtypes* contain type2.
 
         """
         type1 = Type(name='one', meta='meta')
@@ -214,12 +214,12 @@ class TestType(unittest.TestCase):
 
         another_type_1 = Type(
             name='Type1',
-            contained_types=frozenset((type1, type2)),
+            subtypes=frozenset((type1, type2)),
             meta='meta'
         )
         another_type_2 = Type(
             name='Type2',
-            contained_types=frozenset((another_type_1,)),
+            subtypes=frozenset((another_type_1,)),
             meta='meta'
         )
 
@@ -233,14 +233,14 @@ class TestType(unittest.TestCase):
 
     def test_type_not_contains_another_type(self):
         """Test that another_type does not contain a Type when that Type is
-        not contained by any of another_type's *contained_types*.
+        not contained by any of another_type's *subtypes*.
 
         """
         type1 = Type(name='one', meta='meta')
         type2 = Type(name='two', meta='meta')
         another_type = Type(
             name='Type1',
-            contained_types=frozenset((type2,)),
+            subtypes=frozenset((type2,)),
             meta='meta'
         )
 
@@ -250,7 +250,7 @@ class TestType(unittest.TestCase):
 
     def test_type_not_contains_another_type_2(self):
         """Test that a Type does not contain another Type when none of the
-        Type's *contained_types* contain the otherType.
+        Type's *subtypes* contain the otherType.
 
         """
         type1 = Type(name='one', meta='meta')
@@ -258,12 +258,12 @@ class TestType(unittest.TestCase):
 
         another_type_1 = Type(
             name='Type1',
-            contained_types=frozenset((type2,)),
+            subtypes=frozenset((type2,)),
             meta='meta'
         )
         another_type_2 = Type(
             name='Type2',
-            contained_types=frozenset((type1,)),
+            subtypes=frozenset((type1,)),
             meta='meta'
         )
 
@@ -278,7 +278,7 @@ class TestType(unittest.TestCase):
 
     def test_type_contains_ParametrizedType(self):
         """Test that a Type contains a ParametrizedType when any of the
-        *contained_types* contains the ParametrizedType's base type.
+        *subtypes* contains the ParametrizedType's base type.
 
         """
         type1 = Type(name='one', meta='meta')
@@ -287,13 +287,13 @@ class TestType(unittest.TestCase):
         parametrized_type = ParametrizedType(
             name='ParametrizedType',
             base_type=type1,
-            parameter_types=(type2,),
+            parameters=(type2,),
             meta='meta'
         )
 
         another_type = Type(
             name='Type',
-            contained_types=frozenset((type1, type2)),
+            subtypes=frozenset((type1, type2)),
             meta='meta'
         )
 
@@ -313,24 +313,24 @@ class TestType(unittest.TestCase):
 
         number_type = Type(
             name='Number',
-            contained_types=frozenset((int_type, float_type))
+            subtypes=frozenset((int_type, float_type))
         )
         collection_type = Type(
             name='Collection',
-            contained_types=frozenset((list_type, set_type))
+            subtypes=frozenset((list_type, set_type))
         )
 
         collection_of_numbers_type = ParametrizedType(
             name='Collection<Number>',
             base_type=collection_type,
-            parameter_types=(number_type,)
+            parameters=(number_type,)
         )
 
         self.assertIn(collection_of_numbers_type, collection_type)
 
     def test_type_not_contains_ParametrizedType(self):
         """Test that a Type does not contain a ParametrizedType when none of the
-        *contained_types* contain the ParametrizedType's base type.
+        *subtypes* contain the ParametrizedType's base type.
 
         """
         type1 = Type(name='one', meta='meta')
@@ -339,13 +339,13 @@ class TestType(unittest.TestCase):
         parametrized_type = ParametrizedType(
             name='ParametrizedType',
             base_type=type1,
-            parameter_types=(type2,),
+            parameters=(type2,),
             meta='meta'
         )
 
         another_type = Type(
             name='Type',
-            contained_types=frozenset((type2,)),
+            subtypes=frozenset((type2,)),
             meta='meta'
         )
 
@@ -365,17 +365,17 @@ class TestType(unittest.TestCase):
 
         number_type = Type(
             name='Number',
-            contained_types=frozenset((int_type, float_type))
+            subtypes=frozenset((int_type, float_type))
         )
         collection_type = Type(
             name='Collection',
-            contained_types=frozenset((list_type, set_type))
+            subtypes=frozenset((list_type, set_type))
         )
 
         collection_of_numbers_type = ParametrizedType(
             name='Collection<Number>',
             base_type=collection_type,
-            parameter_types=(number_type,)
+            parameters=(number_type,)
         )
 
         self.assertNotIn(collection_of_numbers_type, number_type)
@@ -413,7 +413,7 @@ class TestParametrizedType(unittest.TestCase):
             name=ptype1.name,
             meta=ptype1.meta,
             base_type=ptype1.base_type,
-            parameter_types=ptype1.parameter_types
+            parameters=ptype1.parameters
         )
 
         self.assertEqual(ptype1, ptype2)
@@ -430,7 +430,7 @@ class TestParametrizedType(unittest.TestCase):
             name=t.name,
             meta=t.meta,
             base_type=t.base_type,
-            parameter_types=t.parameter_types
+            parameters=t.parameters
         )),
         st.shared(
             default_parametrized_types(), key='test_pt_eq_transitive'
@@ -438,7 +438,7 @@ class TestParametrizedType(unittest.TestCase):
             name=t.name,
             meta=t.meta,
             base_type=t.base_type,
-            parameter_types=t.parameter_types
+            parameters=t.parameters
         ))
     )
     @settings(
@@ -466,7 +466,7 @@ class TestParametrizedType(unittest.TestCase):
             name=ptype1.name,
             meta=ptype1.meta,
             base_type=ptype1.base_type,
-            parameter_types=ptype1.parameter_types
+            parameters=ptype1.parameters
         )
 
         self.assertEqual(ptype1, ptype2)
@@ -497,7 +497,7 @@ class TestParametrizedType(unittest.TestCase):
             name=t.name,
             meta=t.meta,
             base_type=t.base_type,
-            parameter_types=t.parameter_types
+            parameters=t.parameters
         ))
     )
     @settings(
@@ -537,7 +537,7 @@ class TestParametrizedType(unittest.TestCase):
             name=t.name,
             meta=t.meta,
             base_type=t.base_type,
-            parameter_types=t.parameter_types
+            parameters=t.parameters
         ))
     )
     @settings(
@@ -573,7 +573,7 @@ class TestParametrizedType(unittest.TestCase):
 
     def test_parametrized_type_raises_TypeError_when_ptypes_empty(self):
         """Test that a ParametrizedType raises TypeError when constructued with 
-        an empty parameter_types param.
+        an empty parameters param.
 
         """
         base_type = Type(name='type1', meta='meta1')
@@ -581,10 +581,10 @@ class TestParametrizedType(unittest.TestCase):
             TypeError,
             ParametrizedType,
             (),
-            {'name': 'test', 'base_type': base_type, 'parameter_types': ()}
+            {'name': 'test', 'base_type': base_type, 'parameters': ()}
         )
 
-    def test_parametrized_type_contains_when_all_parameter_types_in_1(self):
+    def test_parametrized_type_contains_when_all_parameters_in_1(self):
         """Test that a ParametrizedType contains another ParametrizedType
         *candidate* when all of *candidate's* parameter types are contained in
         *self's* parameter types and the base types are equal.
@@ -601,13 +601,13 @@ class TestParametrizedType(unittest.TestCase):
         parametrized_type_1 = ParametrizedType(
             name='ParametrizedType1',
             base_type=base_type_1,
-            parameter_types=(parameter_type_1, parameter_type_2),
+            parameters=(parameter_type_1, parameter_type_2),
             meta='meta'
         )
         parametrized_type_2 = ParametrizedType(
             name='ParametrizedType2',
             base_type=base_type_2,
-            parameter_types=(parameter_type_1, parameter_type_2),
+            parameters=(parameter_type_1, parameter_type_2),
             meta='meta'
         )
 
@@ -617,7 +617,7 @@ class TestParametrizedType(unittest.TestCase):
         self.assertIn(parametrized_type_1, parametrized_type_2)
         self.assertIn(parametrized_type_2, parametrized_type_1)
 
-    def test_parametrized_type_not_contains_when_not_all_parameter_types_in_1(
+    def test_parametrized_type_not_contains_when_not_all_parameters_in_1(
         self
     ):
         """Test that a ParametrizedType does not contain another
@@ -638,13 +638,13 @@ class TestParametrizedType(unittest.TestCase):
         parametrized_type_1 = ParametrizedType(
             name='ParametrizedType1',
             base_type=base_type_1,
-            parameter_types=(parameter_type_1, parameter_type_2),
+            parameters=(parameter_type_1, parameter_type_2),
             meta='meta'
         )
         parametrized_type_2 = ParametrizedType(
             name='ParametrizedType2',
             base_type=base_type_2,
-            parameter_types=(parameter_type_1, parameter_type_3),
+            parameters=(parameter_type_1, parameter_type_3),
             meta='meta'
         )
 
@@ -654,7 +654,7 @@ class TestParametrizedType(unittest.TestCase):
         self.assertNotIn(parametrized_type_1, parametrized_type_2)
         self.assertNotIn(parametrized_type_2, parametrized_type_1)
 
-    def test_parametrized_type_contains_when_all_parameter_types_in_2(self):
+    def test_parametrized_type_contains_when_all_parameters_in_2(self):
         """Test that a ParametrizedType contains another ParametrizedType
         *candidate* when all of *candidate's* parameter types are contained in
         *self's* parameter types and the base types are equal.
@@ -680,14 +680,14 @@ class TestParametrizedType(unittest.TestCase):
 
         parameter_type_1 = Type(
             name='ParameterType1',
-            contained_types=frozenset(
+            subtypes=frozenset(
                 (parameter_contained_type_1, parameter_contained_type_2)
             ),
             meta='meta'
         )
         parameter_type_2 = Type(
             name='ParameterType1',
-            contained_types=frozenset(
+            subtypes=frozenset(
                 (parameter_contained_type_1, parameter_contained_type_3)
             ),
             meta='meta'
@@ -696,13 +696,13 @@ class TestParametrizedType(unittest.TestCase):
         another_parametrized_type = ParametrizedType(
             name='ParametrizedType1',
             base_type=base_type_1,
-            parameter_types=(parameter_type_1, parameter_type_2),
+            parameters=(parameter_type_1, parameter_type_2),
             meta='meta'
         )
         parametrized_type = ParametrizedType(
             name='ParametrizedType2',
             base_type=base_type_1,
-            parameter_types=(
+            parameters=(
                 parameter_contained_type_1, parameter_contained_type_3
             ),
             meta='meta'
@@ -711,7 +711,7 @@ class TestParametrizedType(unittest.TestCase):
         self.assertIn(parametrized_type, another_parametrized_type)
         self.assertNotIn(another_parametrized_type, parametrized_type)
 
-    def test_parametrized_type_not_contains_when_not_all_parameter_types_in_2(
+    def test_parametrized_type_not_contains_when_not_all_parameters_in_2(
         self
     ):
         """Test that a ParametrizedType does not contain another
@@ -740,14 +740,14 @@ class TestParametrizedType(unittest.TestCase):
 
         parameter_type_1 = Type(
             name='ParameterType1',
-            contained_types=frozenset(
+            subtypes=frozenset(
                 (parameter_contained_type_1, parameter_contained_type_2)
             ),
             meta='meta'
         )
         parameter_type_2 = Type(
             name='ParameterType1',
-            contained_types=frozenset(
+            subtypes=frozenset(
                 (parameter_contained_type_1, parameter_contained_type_3)
             ),
             meta='meta'
@@ -756,13 +756,13 @@ class TestParametrizedType(unittest.TestCase):
         another_parametrized_type = ParametrizedType(
             name='ParametrizedType1',
             base_type=base_type_1,
-            parameter_types=(parameter_type_1, parameter_type_2),
+            parameters=(parameter_type_1, parameter_type_2),
             meta='meta'
         )
         parametrized_type = ParametrizedType(
             name='ParametrizedType2',
             base_type=base_type_1,
-            parameter_types=(
+            parameters=(
                 parameter_contained_type_1, parameter_contained_type_2
             ),
             meta='meta'
@@ -784,23 +784,23 @@ class TestParametrizedType(unittest.TestCase):
 
         number_type = Type(
             name='Number',
-            contained_types=frozenset((int_type, float_type))
+            subtypes=frozenset((int_type, float_type))
         )
         collection_type = Type(
             name='Collection',
-            contained_types=frozenset((list_type, set_type))
+            subtypes=frozenset((list_type, set_type))
         )
 
         collection_of_numbers_type = ParametrizedType(
             name='Collection<Number>',
             base_type=collection_type,
-            parameter_types=(number_type,)
+            parameters=(number_type,)
         )
 
         collection_of_ints_type = ParametrizedType(
             name='Collection<Int>',
             base_type=collection_type,
-            parameter_types=(int_type,)
+            parameters=(int_type,)
         )
 
         self.assertIn(collection_of_ints_type, collection_of_numbers_type)
@@ -820,23 +820,23 @@ class TestParametrizedType(unittest.TestCase):
 
         number_type = Type(
             name='Number',
-            contained_types=frozenset((int_type, float_type))
+            subtypes=frozenset((int_type, float_type))
         )
         collection_type = Type(
             name='Collection',
-            contained_types=frozenset((list_type, set_type))
+            subtypes=frozenset((list_type, set_type))
         )
 
         collection_of_numbers_type = ParametrizedType(
             name='Collection<Number>',
             base_type=collection_type,
-            parameter_types=(number_type,)
+            parameters=(number_type,)
         )
 
         collection_of_strs_type = ParametrizedType(
             name='Collection<Str>',
             base_type=collection_type,
-            parameter_types=(str_type,)
+            parameters=(str_type,)
         )
 
         self.assertNotIn(collection_of_strs_type, collection_of_numbers_type)
@@ -855,27 +855,27 @@ class TestParametrizedType(unittest.TestCase):
 
         number_type = Type(
             name='Number',
-            contained_types=frozenset((int_type, float_type))
+            subtypes=frozenset((int_type, float_type))
         )
         integer_type = Type(
             name='Integer',
-            contained_types=frozenset((int_type,))
+            subtypes=frozenset((int_type,))
         )
         collection_type = Type(
             name='Collection',
-            contained_types=frozenset((list_type, set_type))
+            subtypes=frozenset((list_type, set_type))
         )
 
         collection_of_numbers_type = ParametrizedType(
             name='Collection<Number>',
             base_type=collection_type,
-            parameter_types=(number_type,)
+            parameters=(number_type,)
         )
 
         collection_of_integers_type = ParametrizedType(
             name='Collection<Integer>',
             base_type=collection_type,
-            parameter_types=(integer_type,)
+            parameters=(integer_type,)
         )
 
         self.assertIn(integer_type, number_type)
@@ -896,27 +896,27 @@ class TestParametrizedType(unittest.TestCase):
 
         number_type = Type(
             name='Number',
-            contained_types=frozenset((int_type, float_type))
+            subtypes=frozenset((int_type, float_type))
         )
         string_type = Type(
             name='String',
-            contained_types=frozenset((str_type,))
+            subtypes=frozenset((str_type,))
         )
         collection_type = Type(
             name='Collection',
-            contained_types=frozenset((list_type, set_type))
+            subtypes=frozenset((list_type, set_type))
         )
 
         collection_of_numbers_type = ParametrizedType(
             name='Collection<Number>',
             base_type=collection_type,
-            parameter_types=(number_type,)
+            parameters=(number_type,)
         )
 
         collection_of_strings_type = ParametrizedType(
             name='Collection<String>',
             base_type=collection_type,
-            parameter_types=(string_type,)
+            parameters=(string_type,)
         )
 
         self.assertNotIn(string_type, number_type)

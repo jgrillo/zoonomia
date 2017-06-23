@@ -47,24 +47,24 @@ class TestFull(unittest.TestCase):
 
         collection_type = Type(
             name='Collection',
-            contained_types=frozenset((list_type, set_type))
+            subtypes=frozenset((list_type, set_type))
         )
 
         number_type = Type(
             name='Number',
-            contained_types=frozenset((int_type, float_type))
+            subtypes=frozenset((int_type, float_type))
         )
 
         collection_of_numbers = ParametrizedType(
             name='Collection<Number>',
             base_type=collection_type,
-            parameter_types=(number_type,)
+            parameters=(number_type,)
         )
 
         collection_of_floats = ParametrizedType(
             name='Collection<Float>',
             base_type=collection_type,
-            parameter_types=(float_type,)
+            parameters=(float_type,)
         )
 
         basis_0 = Operator(
@@ -128,24 +128,24 @@ class TestFull(unittest.TestCase):
 
         collection_type = Type(
             name='Collection',
-            contained_types=frozenset((list_type, set_type))
+            subtypes=frozenset((list_type, set_type))
         )
 
         number_type = Type(
             name='Number',
-            contained_types=frozenset((int_type, float_type))
+            subtypes=frozenset((int_type, float_type))
         )
 
         collection_of_numbers = ParametrizedType(
             name='Collection<Number>',
             base_type=collection_type,
-            parameter_types=(number_type,)
+            parameters=(number_type,)
         )
 
         collection_of_floats = ParametrizedType(
             name='Collection<Float>',
             base_type=collection_type,
-            parameter_types=(float_type,)
+            parameters=(float_type,)
         )
 
         basis_0 = Operator(
@@ -216,24 +216,24 @@ class TestGrow(unittest.TestCase):
 
         collection_type = Type(
             name='Collection',
-            contained_types=frozenset((list_type, set_type))
+            subtypes=frozenset((list_type, set_type))
         )
 
         number_type = Type(
             name='Number',
-            contained_types=frozenset((int_type, float_type))
+            subtypes=frozenset((int_type, float_type))
         )
 
         collection_of_numbers = ParametrizedType(
             name='Collection<Number>',
             base_type=collection_type,
-            parameter_types=(number_type,)
+            parameters=(number_type,)
         )
 
         collection_of_floats = ParametrizedType(
             name='Collection<Float>',
             base_type=collection_type,
-            parameter_types=(float_type,)
+            parameters=(float_type,)
         )
 
         basis_0 = Operator(
@@ -293,24 +293,24 @@ class TestGrow(unittest.TestCase):
 
         collection_type = Type(
             name='Collection',
-            contained_types=frozenset((list_type, set_type))
+            subtypes=frozenset((list_type, set_type))
         )
 
         number_type = Type(
             name='Number',
-            contained_types=frozenset((int_type, float_type))
+            subtypes=frozenset((int_type, float_type))
         )
 
         collection_of_numbers = ParametrizedType(
             name='Collection<Number>',
             base_type=collection_type,
-            parameter_types=(number_type,)
+            parameters=(number_type,)
         )
 
         collection_of_floats = ParametrizedType(
             name='Collection<Float>',
             base_type=collection_type,
-            parameter_types=(float_type,)
+            parameters=(float_type,)
         )
 
         basis_0 = Operator(
@@ -458,24 +458,24 @@ class TestRampedHalfAndHalf(unittest.TestCase):
 
         collection_type = Type(
             name='Collection',
-            contained_types=frozenset((list_type, set_type))
+            subtypes=frozenset((list_type, set_type))
         )
 
         number_type = Type(
             name='Number',
-            contained_types=frozenset((int_type, float_type))
+            subtypes=frozenset((int_type, float_type))
         )
 
         collection_of_numbers = ParametrizedType(
             name='Collection<Number>',
             base_type=collection_type,
-            parameter_types=(number_type,)
+            parameters=(number_type,)
         )
 
         collection_of_floats = ParametrizedType(
             name='Collection<Float>',
             base_type=collection_type,
-            parameter_types=(float_type,)
+            parameters=(float_type,)
         )
 
         basis_0 = Operator(
@@ -560,24 +560,24 @@ class TestRampedHalfAndHalf(unittest.TestCase):
 
         collection_type = Type(
             name='Collection',
-            contained_types=frozenset((list_type, set_type))
+            subtypes=frozenset((list_type, set_type))
         )
 
         number_type = Type(
             name='Number',
-            contained_types=frozenset((int_type, float_type))
+            subtypes=frozenset((int_type, float_type))
         )
 
         collection_of_numbers = ParametrizedType(
             name='Collection<Number>',
             base_type=collection_type,
-            parameter_types=(number_type,)
+            parameters=(number_type,)
         )
 
         collection_of_floats = ParametrizedType(
             name='Collection<Float>',
             base_type=collection_type,
-            parameter_types=(float_type,)
+            parameters=(float_type,)
         )
 
         basis_0 = Operator(
@@ -659,24 +659,24 @@ class TestRampedHalfAndHalf(unittest.TestCase):
 
         collection_type = Type(
             name='Collection',
-            contained_types=frozenset((list_type, set_type))
+            subtypes=frozenset((list_type, set_type))
         )
 
         number_type = Type(
             name='Number',
-            contained_types=frozenset((int_type, float_type))
+            subtypes=frozenset((int_type, float_type))
         )
 
         collection_of_numbers = ParametrizedType(
             name='Collection<Number>',
             base_type=collection_type,
-            parameter_types=(number_type,)
+            parameters=(number_type,)
         )
 
         collection_of_floats = ParametrizedType(
             name='Collection<Float>',
             base_type=collection_type,
-            parameter_types=(float_type,)
+            parameters=(float_type,)
         )
 
         basis_0 = Operator(

@@ -15,11 +15,9 @@
 import unittest
 import pickle
 
-from pydot import Graph, Node as GraphNode, Edge as GraphEdge
-
 from zoonomia.tree import Node, Tree, iter_calls, iter_symbols
 from zoonomia.lang import Symbol, Operator
-from zoonomia.types import Type
+from zoonomia.types import Type, TypeCheckError
 
 
 class TestNode(unittest.TestCase):
@@ -189,8 +187,9 @@ class TestNode(unittest.TestCase):
         self.assertIs(basis_node.dtype, basis_op.dtype)
 
     def test_add_child_raises_signature_type_mismatch(self):
-        """Test that the add_child method raises TypeError if the child's dtype
-        does not match the node's operator's signature at the given position.
+        """Test that the add_child method raises TypeCheckError if the child's
+        dtype does not match the node's operator's signature at the given
+        position.
 
         """
         some_type = Type(name='SomeType')
@@ -209,11 +208,14 @@ class TestNode(unittest.TestCase):
         terminal_node = Node(operator=terminal_op)
 
         self.assertRaises(
-            TypeError, basis_node.add_child, child=terminal_node, position=0
+            TypeCheckError,
+            basis_node.add_child,
+            child=terminal_node,
+            position=0
         )
 
     def test_add_child_raises_signature_missing_index(self):
-        """Test that the add_child method raises IndexError if the child's
+        """Test that the add_child method raises TypeCheckError if the child's
         signature does not contain an index corresponding to the given
         position.
 
@@ -230,12 +232,15 @@ class TestNode(unittest.TestCase):
         terminal_node = Node(operator=terminal_op)
 
         self.assertRaises(
-            IndexError, basis_node.add_child, child=terminal_node, position=1
+            TypeCheckError,
+            basis_node.add_child,
+            child=terminal_node,
+            position=1
         )
 
     def test_add_child_raises_when_child_already_present(self):
-        """Test that add_child raises TypeError if a child is already present at
-        the given position.
+        """Test that add_child raises ValueError if a child is already present
+        at the given position.
 
         """
         some_type = Type(name='SomeType')
@@ -258,7 +263,7 @@ class TestNode(unittest.TestCase):
         self.assertIs(basis_node, terminal_node.parent)
 
         self.assertRaises(
-            TypeError, basis_node.add_child, child=terminal_node, position=0
+            ValueError, basis_node.add_child, child=terminal_node, position=0
         )
 
     def test_add_remove_child(self):
@@ -2260,7 +2265,6 @@ class TestTree(unittest.TestCase):
         When __getitem__[(1, 1)] is called, node_3 should be returned.
 
         """
-        self.maxDiff = None
         int_type = Type(name='Int')
         str_type = Type(name='Str')
 
@@ -2400,3 +2404,56 @@ class TestTree(unittest.TestCase):
 
         # check that deleting the root node fails
         self.assertRaises(IndexError, tree.__delitem__, 0)
+
+    def test_tree_setitem(self):
+        """Test that we can build a tree using __setitem__.
+
+                             node_1
+                            /      \
+                        node_2    node_3
+                      /   |   \
+                node_4 node_5 node_6
+
+        """
+        int_type = Type(name='Int')
+        str_type = Type(name='Str')
+
+        node_2_op = Operator(
+            symbol=Symbol(name='node_2', dtype=int_type),
+            signature=(int_type, int_type, str_type)
+        )
+
+        node_1_op = Operator(
+            symbol=Symbol(name='node_1', dtype=int_type),
+            signature=(int_type, int_type)
+        )
+
+        node_4_op = Operator(symbol=Symbol(name='node_4', dtype=int_type))
+        node_5_op = Operator(symbol=Symbol(name='node_5', dtype=int_type))
+        node_6_op = Operator(symbol=Symbol(name='node_6', dtype=str_type))
+        node_3_op = Operator(symbol=Symbol(name='node_3', dtype=int_type))
+
+        node_4 = Node(operator=node_4_op)
+        node_5 = Node(operator=node_5_op)
+        node_6 = Node(operator=node_6_op)
+        node_2 = Node(operator=node_2_op)
+        node_3 = Node(operator=node_3_op)
+        node_1 = Node(operator=node_1_op)
+
+        tree = Tree(root=node_1)
+        self.assertEqual(tree[(0, 0)], node_1)
+
+        tree[(1, 0)] = node_2
+        self.assertEquals(tree[(1, 0)], node_2)
+
+        tree[(1, 1)] = node_3
+        self.assertEqual(tree[(1, 1)], node_3)
+
+        tree[(2, 0)] = node_4
+        self.assertEqual(tree[(2, 0)], node_4)
+
+        tree[(2, 1)] = node_5
+        self.assertEqual(tree[(2, 1)], node_5)
+
+        tree[(2, 2)] = node_6
+        self.assertEqual(tree[(2, 2)], node_6)

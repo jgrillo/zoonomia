@@ -612,7 +612,7 @@ class TestOperatorTable(unittest.TestCase):
         str_type = Type(name='str')
         list_type = Type(name='List')
         collection_type = Type(
-            name='Collection', contained_types=frozenset((list_type,))
+            name='Collection', subtypes=frozenset((list_type,))
         )
 
         op_1 = Operator(
@@ -637,12 +637,12 @@ class TestOperatorTable(unittest.TestCase):
         str_type = Type(name='str')
         list_type = Type(name='List')
         collection_type = Type(
-            name='Collection', contained_types=frozenset((list_type,))
+            name='Collection', subtypes=frozenset((list_type,))
         )
         collection_of_ints_type = ParametrizedType(
             name='Collection<int>',
             base_type=collection_type,
-            parameter_types=(int_type,)
+            parameters=(int_type,)
         )
 
         op_1 = Operator(
@@ -675,30 +675,30 @@ class TestOperatorTable(unittest.TestCase):
 
         collection_type = Type(
             name='Collection',
-            contained_types=frozenset((list_type, set_type))
+            subtypes=frozenset((list_type, set_type))
         )
 
         number_type = Type(
             name='Number',
-            contained_types=frozenset((int_type, float_type))
+            subtypes=frozenset((int_type, float_type))
         )
 
         collection_of_numbers_type = ParametrizedType(
             name='Collection<Number>',
             base_type=collection_type,
-            parameter_types=(number_type,)
+            parameters=(number_type,)
         )
 
         collection_of_floats_type = ParametrizedType(
             name='Collection<Float>',
             base_type=collection_type,
-            parameter_types=(float_type,)
+            parameters=(float_type,)
         )
 
         collection_of_strings_type = ParametrizedType(
             name='Collection<String>',
             base_type=collection_type,
-            parameter_types=(string_type,)
+            parameters=(string_type,)
         )
 
         # collection_of_numbers_type and collection_of_floats_type can be
@@ -783,17 +783,17 @@ class TestOperatorTable(unittest.TestCase):
 
         collection_type = Type(
             name='Collection',
-            contained_types=frozenset((list_type, set_type))
+            subtypes=frozenset((list_type, set_type))
         )
         number_type = Type(
             name='Number',
-            contained_types=frozenset((int_type, float_type))
+            subtypes=frozenset((int_type, float_type))
         )
 
         collection_of_numbers_type = ParametrizedType(
             name='Collection<Number>',
             base_type=collection_type,
-            parameter_types=(number_type,)
+            parameters=(number_type,)
         )
 
         # collection_of_numbers_type can be resolved to collection_type
@@ -832,15 +832,15 @@ class TestOperatorTable(unittest.TestCase):
         list_type = Type(name='List')
         number_type = Type(
             name='Number',
-            contained_types=frozenset((int_type, float_type))
+            subtypes=frozenset((int_type, float_type))
         )
         collection_type = Type(
-            name='Collection', contained_types=frozenset((list_type,))
+            name='Collection', subtypes=frozenset((list_type,))
         )
         collection_of_numbers_type = ParametrizedType(
             name='Collection<Number>',
             base_type=collection_type,
-            parameter_types=(number_type,)
+            parameters=(number_type,)
         )
 
         op_1 = Operator(
@@ -869,15 +869,15 @@ class TestOperatorTable(unittest.TestCase):
         list_type = Type(name='List')
         number_type = Type(
             name='Number',
-            contained_types=frozenset((int_type, float_type))
+            subtypes=frozenset((int_type, float_type))
         )
         collection_type = Type(
-            name='Collection', contained_types=frozenset((list_type,))
+            name='Collection', subtypes=frozenset((list_type,))
         )
         collection_of_numbers_type = ParametrizedType(
             name='Collection<Number>',
             base_type=collection_type,
-            parameter_types=(number_type,)
+            parameters=(number_type,)
         )
 
         op_1 = Operator(

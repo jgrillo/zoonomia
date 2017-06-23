@@ -64,9 +64,6 @@ class Objective(object):
         else:
             return NotImplemented
 
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
     def evaluate(self, solution):
         """Compute the fitness measurement of a solution with respect to this
         objective.
@@ -127,9 +124,6 @@ class Fitness(object):
             )
         else:
             return NotImplemented
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
 
     def __gt__(self, other):
         if isinstance(other, Fitness):
@@ -317,24 +311,6 @@ class Solution(object):  # FIXME: should fitnesses be futures?
             )
         else:
             return NotImplemented
-
-    def __ne__(self, other):
-        """Computes whether this solution doesn't equal another solution in a
-        thread-safe manner. If this instance's *evaluate* method or the other
-        instance's *evaluate* method has not been called prior to the first
-        call to *__eq__*, calling this method will trigger one or perhaps two
-        potentially expensive *evaluate* calls.
-
-        :param other: The other solution.
-
-        :type other: Solution
-
-        :return: Whether this solution equals the other solution.
-
-        :rtype: bool
-
-        """
-        return not self.__eq__(other)
 
     def __gt__(self, other):
         """This solution instance is greater than the *other* solution instance

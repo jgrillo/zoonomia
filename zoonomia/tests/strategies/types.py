@@ -55,7 +55,7 @@ def metas(min_size=1, average_size=5):
     return st.text(min_size=min_size, average_size=average_size)
 
 
-def contained_types(contained_ts, min_size=0, max_size=5):
+def subtypes(contained_ts, min_size=0, max_size=5):
     """Build a strategy representing the contained types of a
     :class:`zoonomia.types.Type`.
 
@@ -110,7 +110,7 @@ def types(name_ts, meta_ts):
             **{
                 'name': name_ts,
                 'meta': meta_ts,
-                'contained_types': contained_types(children)
+                'subtypes': subtypes(children)
             }
         ),
         max_leaves=5
@@ -210,7 +210,7 @@ def parametrized_types(names_strategy, metas_strategy, base_ts, parameter_ts):
                 'name': names_strategy,
                 'meta': metas_strategy,
                 'base_type': base_ts,
-                'parameter_types': parameter_types(parameter_ts)
+                'parameters': parameter_types(parameter_ts)
             }
         ),
         extend=lambda children: st.builds(
@@ -219,7 +219,7 @@ def parametrized_types(names_strategy, metas_strategy, base_ts, parameter_ts):
                 'name': names_strategy,
                 'meta': metas_strategy,
                 'base_type': base_ts,
-                'parameter_types': parameter_types(parameter_ts | children)
+                'parameters': parameter_types(parameter_ts | children)
             }
         ),
         max_leaves=5
@@ -255,5 +255,5 @@ def distinct_parametrized_types(parametrized_ts):
         d['type1'].name != d['another_type'].name
         and d['type1'].meta != d['another_type'].meta
         and d['type1'].base_type != d['another_type'].base_type
-        and d['type1'].parameter_types != d['another_type'].parameter_types
+        and d['type1'].parameters != d['another_type'].parameters
     ))
