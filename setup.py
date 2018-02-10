@@ -1,4 +1,4 @@
-#   Copyright 2015-2017 Jesse C. Grillo
+#   Copyright 2015-2018 Jesse C. Grillo
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -52,7 +52,6 @@ setup(
     url='https://www.github.com/jgrillo/zoonomia',
     description='Multi-objective strongly typed genetic programming library',
     long_description=README,
-    license='MIT',
     packages=('zoonomia',),
     classifiers=(
         'Development Status :: 2 - Pre-Alpha',

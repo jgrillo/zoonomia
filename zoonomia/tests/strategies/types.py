@@ -1,4 +1,4 @@
-#   Copyright 2015-2017 Jesse C. Grillo
+#   Copyright 2015-2018 Jesse C. Grillo
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ use in Hypothesis tests.
 
 import hypothesis.strategies as st
 
-from zoonomia.types import Type, ParametrizedType
+from zoonomia.types import Type, Parameter, Variance, ParametrizedType
 
 
 def names(min_size=1, average_size=5):
@@ -55,43 +55,41 @@ def metas(min_size=1, average_size=5):
     return st.text(min_size=min_size, average_size=average_size)
 
 
-def subtypes(contained_ts, min_size=0, max_size=5):
-    """Build a strategy representing the contained types of a
+def subtypes(types_strategy, min_size=0, max_size=5):
+    """Build a strategy representing the subtypes of a
     :class:`zoonomia.types.Type`.
 
-    :param contained_ts:
+    :param types_strategy:
         A strategy supplying :class:`zoonomia.types.Type` instances
 
-    :type contained_ts: hypothesis.strategies.SearchStrategy
+    :type types_strategy: hypothesis.strategies.SearchStrategy
 
-    :param min_size: The minimum number of contained types.
+    :param min_size: The minimum number of subtypes.
     :type min_size: int
 
-    :param max_size: The maximum number of contained types.
+    :param max_size: The maximum number of subtypes.
     :type max_size: int
 
-    :return:
-        A frozensets strategy representing the contained types of a generic
-        type.
+    :return: A frozensets strategy representing the subtypes of a generic type.
 
     :rtype: hypothesis.strategies.SearchStrategy
 
     """
     return st.frozensets(
-        elements=contained_ts,
+        elements=types_strategy,
         min_size=min_size,
         max_size=max_size
     )
 
 
-def types(name_ts, meta_ts):
+def types(names_strategy, metas_strategy):
     """Build a :class:`zoonomia.types.Type` strategy.
 
-    :param name_ts: A text strategy representing type names.
-    :type name_ts: hypothesis.strategies.SearchStrategy
+    :param names_strategy: A text strategy representing type names.
+    :type names_strategy: hypothesis.strategies.SearchStrategy
 
-    :param meta_ts: A text strategy representing type metadata.
-    :type meta_ts: hypothesis.strategies.SearchStrategy
+    :param metas_strategy: A text strategy representing type metadata.
+    :type metas_strategy: hypothesis.strategies.SearchStrategy
 
     :return: A strategy yielding generic types.
     :rtype: hypothesis.strategies.SearchStrategy
@@ -101,15 +99,15 @@ def types(name_ts, meta_ts):
         base=st.builds(
             Type,
             **{
-                'name': name_ts,
-                'meta': meta_ts,
+                'name': names_strategy,
+                'meta': metas_strategy,
             }
         ),
         extend=lambda children: st.builds(
             Type,
             **{
-                'name': name_ts,
-                'meta': meta_ts,
+                'name': names_strategy,
+                'meta': metas_strategy,
                 'subtypes': subtypes(children)
             }
         ),
@@ -119,17 +117,17 @@ def types(name_ts, meta_ts):
 
 def default_types():
     return types(
-        name_ts=names(),
-        meta_ts=metas()
+        names_strategy=names(),
+        metas_strategy=metas()
     )
 
 
-def distinct_types(ts):
+def distinct_types(types_strategy):
     """Build a :class:`zoonomia.types.Type` strategy yielding two types
     per call where the two types are guaranteed to be distinct.
 
-    :param ts: A generic types strategy.
-    :type ts: hypothesis.strategies.SearchStrategy
+    :param types_strategy: A generic types strategy.
+    :type types_strategy: hypothesis.strategies.SearchStrategy
 
     :return: A fixed dictionaries strategy yielding distinct generic types under
     the keys 'type1' and 'another_type'.
@@ -138,21 +136,23 @@ def distinct_types(ts):
 
     """
     return st.fixed_dictionaries(
-        {'type1': ts, 'another_type': ts}
+        {'type1': types_strategy, 'another_type': types_strategy}
     ).filter(lambda d: (
         d['type1'].name != d['another_type'].name
         and d['type1'].meta != d['another_type'].meta
-        and d['type1'].contained_types != d['another_type'].contained_types
+        and d['type1'].subtypes != d['another_type'].subtypes
     ))
 
 
-def parameter_types(parameter_ts, min_size=1, max_size=5):
-    """Build a strategy of :class:`zoonomia.types.Type` and
-    :class:`zoonomia.types.Type` instances which represent parameter
-    types for :class:`zoonomia.types.ParametrizedType`.
+def parameters(types_strategy, variances_strategy, min_size=1, max_size=5):
+    """Build a strategy of :class:`zoonomia.types.Parameter` for
+    :class:`zoonomia.types.ParametrizedType`.
 
-    :param parameter_ts: A parameter types strategy.
-    :type parameter_ts: hypothesis.strategies.SearchStrategy
+    :param types_strategy: A strategy of parameter types.
+    :type types_strategy: hypothesis.strategies.SearchStrategy
+
+    :param variances_strategy: A strategy of variances
+    :type variances_strategy: hypothesis.strategies.SearchStrategy
 
     :param min_size: The minimum number of parameter types.
     :type min_size: int
@@ -167,18 +167,59 @@ def parameter_types(parameter_ts, min_size=1, max_size=5):
     return st.builds(
         tuple,
         st.lists(
-            elements=parameter_ts,
+            elements=st.builds(
+                Parameter,
+                **{
+                    'dtype': types_strategy,
+                    'variance': variances_strategy
+                }
+            ),
             min_size=min_size,
             max_size=max_size
         )
     )
 
 
-def default_parameter_types():
-    return parameter_types(parameter_ts=default_types())
+def default_parameters():
+    return parameters(
+        types_strategy=default_types(),
+        variances_strategy=st.sampled_from(
+            (Variance.CONTRAVARIANT, Variance.COVARIANT, Variance.INVARIANT)
+        )
+    )
 
 
-def parametrized_types(names_strategy, metas_strategy, base_ts, parameter_ts):
+def distinct_parameters(parameters_strategy):
+    """Build a :class:`zoonomia.types.Parameter` strategy yielding two
+    parameters per call where the two parameters are guaranteed to be distinct.
+
+    :param parameters_strategy: A strategy which yields parameters.
+    :type parameters_strategy: hypothesis.strategies.SearchStrategy
+
+    :return: A fixed dictionaries strategy yielding distinct parameters under
+    the keys 'parameter1' and 'another_parameter'.
+
+    :rtype: hypothesis.strategies.SearchStrategy
+
+    """
+    return st.fixed_dictionaries(
+        {
+            'parameter1': parameters_strategy,
+            'another_parameter': parameters_strategy
+        }
+    ).filter(lambda d: (
+        d['parameter1'].dtype != d['another_parameter'].dtype
+        and d['parameter1'].variance != d['another_parameter'].variance
+    ))
+
+
+def parametrized_types(
+    names_strategy,
+    metas_strategy,
+    base_types_strategy,
+    parameter_types_strategy,
+    variances_strategy
+):
     """Build a strategy of :class:`zoonomia.types.ParametrizedType` instances.
 
     :param names_strategy: A text strategy representing type names.
@@ -187,17 +228,22 @@ def parametrized_types(names_strategy, metas_strategy, base_ts, parameter_ts):
     :param metas_strategy: A text strategy representing type metadata.
     :type metas_strategy: hypothesis.strategies.SearchStrategy
 
-    :param base_ts:
-        A strategy yielding :class:`zoonomia.types.Type` and
-        :class:`zoonomia.types.Type` instances representing base types.
+    :param base_types_strategy:
+        A strategy yielding :class:`zoonomia.types.Type` instances representing
+        base types.
 
-    :type base_ts: hypothesis.strategies.SearchStrategy
+    :type base_types_strategy: hypothesis.strategies.SearchStrategy
 
-    :param parameter_ts:
-        A strategy representing parameter types. This strategy should emit
-        `zoonomia.types.Type` and `zoonomia.types.Type` instances.
+    :param parameter_types_strategy:
+        A strategy yielding :class:`zoonomia.types.Type` instances representing
+        parameter types.
 
-    :type base_ts: hypothesis.strategies.SearchStrategy
+    :type parameter_types_strategy: hypothesis.strategies.SearchStrategy
+
+    :param variances_strategy:
+        A strategy of :class:`zoonomia.types.Parameter` instances.
+
+    :type variances_strategy: hypothesis.strategies.SearchStrategy
 
     :return: A strategy of parametrized types.
     :rtype: hypothesis.strategies.SearchStrategy
@@ -209,8 +255,11 @@ def parametrized_types(names_strategy, metas_strategy, base_ts, parameter_ts):
             **{
                 'name': names_strategy,
                 'meta': metas_strategy,
-                'base_type': base_ts,
-                'parameters': parameter_types(parameter_ts)
+                'base_type': base_types_strategy,
+                'parameters': parameters(
+                    types_strategy=parameter_types_strategy,
+                    variances_strategy=variances_strategy
+                )
             }
         ),
         extend=lambda children: st.builds(
@@ -218,8 +267,11 @@ def parametrized_types(names_strategy, metas_strategy, base_ts, parameter_ts):
             **{
                 'name': names_strategy,
                 'meta': metas_strategy,
-                'base_type': base_ts,
-                'parameters': parameter_types(parameter_ts | children)
+                'base_type': base_types_strategy,
+                'parameters': parameters(
+                    types_strategy=parameter_types_strategy | children,
+                    variances_strategy=variances_strategy
+                )
             }
         ),
         max_leaves=5
@@ -230,8 +282,11 @@ def default_parametrized_types():
     return parametrized_types(
         names_strategy=names(),
         metas_strategy=metas(),
-        base_ts=default_types(),
-        parameter_ts=default_parameter_types()
+        base_types_strategy=default_types(),
+        parameter_types_strategy=default_parameters(),
+        variances_strategy=st.sampled_from(
+            (Variance.CONTRAVARIANT, Variance.COVARIANT, Variance.INVARIANT)
+        )
     )
 
 

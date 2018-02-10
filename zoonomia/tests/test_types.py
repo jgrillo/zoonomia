@@ -1,4 +1,4 @@
-#   Copyright 2015-2017 Jesse C. Grillo
+#   Copyright 2015-2018 Jesse C. Grillo
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -19,11 +19,11 @@ import hypothesis.strategies as st
 
 from hypothesis import given, settings, HealthCheck
 
-from zoonomia.types import Type, ParametrizedType
+from zoonomia.types import Type, ParametrizedType, Parameter, Variance
 
 from zoonomia.tests.strategies.types import (
     distinct_types, default_types, distinct_parametrized_types,
-    default_parametrized_types
+    default_parametrized_types, default_parameters, distinct_parameters
 )
 
 
@@ -49,7 +49,7 @@ class TestType(unittest.TestCase):
     )
     def test_equals_symmetric(self, data):
         """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
-        d = data.draw(distinct_types(ts=default_types()))
+        d = data.draw(distinct_types(types_strategy=default_types()))
         type1 = d['type1']
         another_type = d['another_type']
 
@@ -97,7 +97,7 @@ class TestType(unittest.TestCase):
     )
     def test_equals_consistent(self, data):
         """Test that repeated equals calls return the same value."""
-        d = data.draw(distinct_types(ts=default_types()))
+        d = data.draw(distinct_types(types_strategy=default_types()))
         type1 = d['type1']
         another_type = d['another_type']
 
@@ -167,8 +167,8 @@ class TestType(unittest.TestCase):
         self.assertEqual(hash(type1), hash(unpickled_type))
 
     @given(
-        st.shared(default_types(), key='test_type_contains1'),
-        st.shared(default_types(), key='test_type_contains1').map(
+        st.shared(default_types(), key='test_type_contains_equal_type'),
+        st.shared(default_types(), key='test_type_contains_equal_type').map(
             lambda t: Type(
                 name=t.name,
                 meta=t.meta,
@@ -188,7 +188,13 @@ class TestType(unittest.TestCase):
         self.assertIn(type1, type2)
         self.assertIn(type1, type2)
 
-    def test_type_contains_another_type(self):
+    @given(
+        st.
+    )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
+    def test_type_contains_invariant(self, ):
         """Test that another_type contains type1 when type1 is contained by any
         of another_types's *subtypes*.
 
@@ -204,7 +210,7 @@ class TestType(unittest.TestCase):
         self.assertNotEqual(type1, another_type)
         self.assertIn(type1, another_type)
 
-    def test_type_contains_other_type_2(self):
+    def test_type_contains_covariant(self):
         """Test that a Type type1 contains another Type type2 when any of
         type1's *subtypes* contain type2.
 
@@ -284,10 +290,12 @@ class TestType(unittest.TestCase):
         type1 = Type(name='one', meta='meta')
         type2 = Type(name='two', meta='meta')
 
+        parameter1 = Parameter(dtype=type2)
+
         parametrized_type = ParametrizedType(
             name='ParametrizedType',
             base_type=type1,
-            parameters=(type2,),
+            parameters=(parameter1,),
             meta='meta'
         )
 
@@ -379,6 +387,124 @@ class TestType(unittest.TestCase):
         )
 
         self.assertNotIn(collection_of_numbers_type, number_type)
+
+class TestParameter(unittest.TestCase):
+    BUFFER_SIZE = 8192 * 4
+    SUPPRESSED_HEALTH_CHECKS = (HealthCheck.too_slow,)
+
+    @given(
+        st.shared(default_parameters(), key='test_p_eq_reflexive'),
+        st.shared(default_parameters(), key='test_p_eq_reflexive')
+    )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
+    def test_equals_reflexive(self, parameter1, parameter2):
+        """Test that an object equals itself."""
+        self.assertIs(parameter1, parameter2)
+        self.assertEqual(parameter1, parameter2)
+
+    @given(st.data())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
+    def test_equals_symmetric(self, data):
+        """Test that for objects :math:`\{x,y\}, x = y \iff y = x`."""
+        d = data.draw(distinct_parameters(
+            parameters_strategy=default_parameters()
+        ))
+        parameter1 = d['parameter1']
+        another_parameter = d['another_parameter']
+
+        parameter2 = Parameter(
+            dtype=parameter1.dtype,
+            variance=parameter1.variance
+        )
+
+        self.assertEqual(parameter1, parameter2)
+        self.assertEqual(parameter2, parameter1)
+
+        self.assertNotEqual(parameter1, another_parameter)
+        self.assertNotEqual(another_parameter, parameter1)
+
+    @given(
+        st.shared(default_parameters(), key='test_p_eq_transitive'),
+        st.shared(
+            default_parameters(), key='test_p_eq_transitive'
+        ).map(lambda p: Parameter(dtype=p.dtype, variance=p.variance)),
+        st.shared(
+            default_parameters(), key='test_p_eq_transitive'
+        ).map(lambda p: Parameter(dtype=p.dtype, variance=p.variance))
+    )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
+    def test_equals_transitive(self, parameter1, parameter2, parameter3):
+        """Test that for objects :math:`\{x,y,z\}, x = y, y = z \iff x = z`."""
+        self.assertEqual(parameter1, parameter2)
+        self.assertEqual(parameter2, parameter3)
+        self.assertEqual(parameter1, parameter3)
+
+    @given(st.data())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
+    def test_equals_consistent(self, data):
+        """Test that repeated equals calls return the same value."""
+        d = data.draw(distinct_parameters(
+            parameters_strategy=default_parameters()
+        ))
+        parameter1 = d['parameter1']
+        another_parameter = d['another_parameter']
+
+        parameter2 = Parameter(
+            dtype=parameter1.dtype, variance=parameter1.variance
+        )
+
+        self.assertEqual(parameter1, parameter2)
+        self.assertEqual(parameter1, parameter2)
+        self.assertEqual(parameter1, parameter2)
+
+        self.assertNotEqual(parameter1, another_parameter)
+        self.assertNotEqual(parameter1, another_parameter)
+        self.assertNotEqual(parameter1, another_parameter)
+
+    @given(default_parameters())
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
+    def test_hash_consistent(self, parameter1):
+        """Test that repeated hash calls yield the same value."""
+        hash1 = hash(parameter1)
+
+        self.assertEqual(hash1, hash(parameter1))
+        self.assertEqual(hash1, hash(parameter1))
+        self.assertEqual(hash1, hash(parameter1))
+
+    @given(
+        st.shared(default_parameters(), key='test_p_hash_equals'),
+        st.shared(
+            default_parameters(), key='test_p_hash_equals'
+        ).map(lambda p: Parameter(
+            dtype=p.dtype, variance=p.variance
+        ))
+    )
+    @settings(
+        buffer_size=BUFFER_SIZE, suppress_health_check=SUPPRESSED_HEALTH_CHECKS
+    )
+    def test_hash_equals(self, parameter1, parameter2):
+        """Test that when two objects are equal their hashes are equal."""
+        self.assertEqual(parameter1, parameter2)
+        self.assertEqual(hash(parameter1), hash(parameter2))
+
+    def test_contains_invariant(self):
+        pass  # FIXME
+
+    def test_contains_covariant(self):
+        pass  # FIXME
+
+    def test_contains_contravariant(self):
+        pass  # FIXME
 
 
 class TestParametrizedType(unittest.TestCase):
@@ -665,15 +791,15 @@ class TestParametrizedType(unittest.TestCase):
 
         self.assertEqual(base_type_1, base_type_2)
 
-        parameter_contained_type_1 = Type(
+        parameter_subtype_1 = Type(
             name='ContainedType1',
             meta='meta'
         )
-        parameter_contained_type_2 = Type(
+        parameter_subtype_2 = Type(
             name='ContainedType2',
             meta='meta'
         )
-        parameter_contained_type_3 = Type(
+        parameter_subtype_3 = Type(
             name='ContainedType3',
             meta='meta'
         )
@@ -681,14 +807,14 @@ class TestParametrizedType(unittest.TestCase):
         parameter_type_1 = Type(
             name='ParameterType1',
             subtypes=frozenset(
-                (parameter_contained_type_1, parameter_contained_type_2)
+                (parameter_subtype_1, parameter_subtype_2)
             ),
             meta='meta'
         )
         parameter_type_2 = Type(
             name='ParameterType1',
             subtypes=frozenset(
-                (parameter_contained_type_1, parameter_contained_type_3)
+                (parameter_subtype_1, parameter_subtype_3)
             ),
             meta='meta'
         )
@@ -703,7 +829,7 @@ class TestParametrizedType(unittest.TestCase):
             name='ParametrizedType2',
             base_type=base_type_1,
             parameters=(
-                parameter_contained_type_1, parameter_contained_type_3
+                parameter_subtype_1, parameter_subtype_3
             ),
             meta='meta'
         )
@@ -725,15 +851,15 @@ class TestParametrizedType(unittest.TestCase):
 
         self.assertEqual(base_type_1, base_type_2)
 
-        parameter_contained_type_1 = Type(
+        parameter_subtype_1 = Type(
             name='ContainedType1',
             meta='meta'
         )
-        parameter_contained_type_2 = Type(
+        parameter_subtype_2 = Type(
             name='ContainedType2',
             meta='meta'
         )
-        parameter_contained_type_3 = Type(
+        parameter_subtype_3 = Type(
             name='ContainedType3',
             meta='meta'
         )
@@ -741,14 +867,14 @@ class TestParametrizedType(unittest.TestCase):
         parameter_type_1 = Type(
             name='ParameterType1',
             subtypes=frozenset(
-                (parameter_contained_type_1, parameter_contained_type_2)
+                (parameter_subtype_1, parameter_subtype_2)
             ),
             meta='meta'
         )
         parameter_type_2 = Type(
             name='ParameterType1',
             subtypes=frozenset(
-                (parameter_contained_type_1, parameter_contained_type_3)
+                (parameter_subtype_1, parameter_subtype_3)
             ),
             meta='meta'
         )
@@ -763,7 +889,7 @@ class TestParametrizedType(unittest.TestCase):
             name='ParametrizedType2',
             base_type=base_type_1,
             parameters=(
-                parameter_contained_type_1, parameter_contained_type_2
+                parameter_subtype_1, parameter_subtype_2
             ),
             meta='meta'
         )

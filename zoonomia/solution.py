@@ -1,4 +1,4 @@
-#   Copyright 2015-2017 Jesse C. Grillo
+#   Copyright 2015-2018 Jesse C. Grillo
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -220,21 +220,20 @@ class Solution(object):  # FIXME: should fitnesses be futures?
         :rtype: tuple[zoonomia.solution.Fitness]
 
         """
-        if self.fitnesses is None:
-            with self._lock:
-                if self.fitnesses is None:
-                    fitnesses = self.map(
-                        lambda o: o.evaluate(self), self.objectives
-                    )
-                    ordered_fitnesses = [
-                        None for _ in range(len(self.objectives))
-                    ]
+        with self._lock:
+            if self.fitnesses is None:
+                fitnesses = self.map(
+                    lambda o: o.evaluate(self), self.objectives
+                )
+                ordered_fitnesses = [
+                    None for _ in range(len(self.objectives))
+                ]
 
-                    for fitness in fitnesses:
-                        idx = self.objectives.index(fitness.objective)
-                        ordered_fitnesses[idx] = fitness
+                for fitness in fitnesses:
+                    idx = self.objectives.index(fitness.objective)
+                    ordered_fitnesses[idx] = fitness
 
-                    self.fitnesses = tuple(ordered_fitnesses)
+                self.fitnesses = tuple(ordered_fitnesses)
         # TODO: asynchronize by making _fitnesses a generator?
         return self.fitnesses
 

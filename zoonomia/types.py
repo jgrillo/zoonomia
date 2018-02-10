@@ -1,4 +1,4 @@
-#   Copyright 2015-2017 Jesse C. Grillo
+#   Copyright 2015-2018 Jesse C. Grillo
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ There are 2 supporting characters to make parametrized generics work:
 
     1. *Parameter* -- a generic parameter.
     2. *Variance* -- an Enum which can take one of the values 'COVARIANT',
-    'INVARIANT', and 'CONTRAVARIANT'.
+    'INVARIANT', or 'CONTRAVARIANT'.
 
 Some terminology:
 
@@ -70,13 +70,12 @@ generic like this:
 
 In the above example, *Collection<Int>* is **not** contained by
 *Collection<Number>* because Zoonomia's type parameters are *invariant* by
-default. However, both *Collection<Int>* and *Collection<Number>* are contained
-by *Collection*. If a place expects values of type *Collection* we can safely
-substitute values of type *Collection<Number>*, *Collection<Int>*, or
-Collection<Float>. If a place expects values of type *Collection<Number>* we can
-safely substitute values of type *Collection<Number>* only. However, Zoonomia
-supports an optional declaration-site variance specifier to relax this
-constraint:
+default. If a place expects values of type *Collection* we can safely substitute
+values of type *Collection<Number>*, *Collection<Int>*, or Collection<Float>.
+If a place expects values of type *Collection<Number>* we can by default safely
+substitute values of type *Collection<Number>* only, even though *Float* and
+*Int* are subtypes of *Number*. However, Zoonomia supports an optional
+declaration-site variance specifier to relax this constraint:
 
 .. code-block:: python
     covariant_collection_of_numbers = ParametrizedType(
@@ -95,27 +94,30 @@ constraint:
         )
     )
 
-Now we have the happy circumstance that *Collection<? extends Number>* contains
-*Collection<Number>*, *Collection<Float>*, and *Collection<Int>*. Moreover,
-*Collection<? super Number>* contains nothing at all, but if *Number* was a
-subtype of some type *Object* and we had defined a type *Collection<Object>*,
-it would then be safe to substitute values of *Collection<Object>* into places
-expecting *Collection<? super Number>*.
+Now we have the happy circumstance that *Collection<? extends Number>*
+"covariantly contains" *Collection<Number>*, *Collection<Float>*, and
+*Collection<Int>*. Moreover, *Collection<? super Number>* contains nothing at
+all, but if *Number* was a subtype of some type *Object* and we had defined a
+type *Collection<Object>*, it would then be safe to substitute values of
+*Collection<Object>* into places expecting *Collection<? super Number>*. In that
+case we would say that *Collection<? super Number>* "contravariantly contains"
+*Collection<Object>* and that *Collection<Object>* is "contravariantly a subtype
+of" *Collection<? super Number>*.
 
 Zoonomia's tree mutation operators maintain the following invariant:
 
-    Functions (i.e. `Func<T, R>`) must be *contravariant* in their inputs and
+    Functions (i.e. *Func<T, R>*) must be *contravariant* in their inputs and
     *covariant* in their outputs. That is, a function of type *Func<T, R>* can
     be safely replaced with another function which accepts a more general type
     than *T* and emits a more specific type than *R*. In Java we would write
-    `Function<? super T, ? extends R>` (if you are a Java programmer you may
+    *Function<? super T, ? extends R>* (if you are a Java programmer you may
     have seen this rule written as the acronym PECS: "Producer Extends Consumer
     Super").
 
-Zoonomia will check that this function type invariant is maintained when each
-node is inserted into a tree. Therefore you should be able to make Zoonomia's
-type system play nicely with your target language, whatever that language may
-be.
+Zoonomia will make sure that this function type invariant is maintained when
+each node is inserted into a tree. Therefore you should be able to make
+Zoonomia's type system play nicely with your target language, whatever that
+language may be, by defining your types and operators appropriately.
 
 """
 
@@ -149,7 +151,7 @@ class Type(object):
         :param subtypes:
             The set of possible types that this Type can be resolved to.
 
-        :type subtypes: frozenset(Type)
+        :type subtypes: frozenset[Type]
 
         :param meta:
             Some (optional) metadata to associate with this type.
@@ -191,9 +193,7 @@ class Type(object):
     def __contains__(self, candidate):
         """Check whether this type can be resolved to a type *candidate*.
 
-        :param candidate:
-            A candidate type.
-
+        :param candidate: A candidate type.
         :type candidate: Type | ParametrizedType
 
         :raise TypeError: if *candidate* is not a Type or ParametrizedType.
@@ -240,6 +240,8 @@ class Type(object):
 
 
 class Variance(Enum):
+    __slots__ = ()
+
     COVARIANT = 'COVARIANT'
     INVARIANT = 'INVARIANT'
     CONTRAVARIANT = 'CONTRAVARIANT'
@@ -269,16 +271,46 @@ class Parameter(object):
     def __eq__(self, other):
         return self.dtype == other.type and self.variance == other.variance
 
+    def __contains__(self, candidate):
+        """Check whether this parameter can be resolved to the *candidate*
+        parameter.
+
+        :param candidate: A candidate parameter.
+        :type candidate: Parameter
+
+        :raises TypeError: if *candidate* is not a Parameter.
+
+        :return:
+            True if the candidate parameter can be safely substituted for this
+            parameter, false otherwise.
+
+        :rtype: bool
+
+        """
+        if isinstance(candidate, Parameter):
+            if self.variance is Variance.INVARIANT:
+                return candidate.dtype == self.dtype
+            elif self.variance is Variance.COVARIANT:
+                return self.dtype in candidate.dtype
+            elif self.variance is Variance.CONTRAVARIANT:
+                return candidate.dtype in self.dtype
+            else:
+                raise TypeError(
+                    'Encountered unknown variance: {0}'.format(self.variance)
+                )
+        else:
+            raise TypeError(
+                'candidate must be a Parameter: {0}'.format(candidate)
+            )
+
     def __repr__(self):
         return 'Parameter(type={type}, variance={variance})'.format(
-            type=self.dtype, variance=self.variance
+            type=repr(self.dtype), variance=repr(self.variance)
         )
 
 
 class ParametrizedType(object):
-    __slots__ = (
-        'name', 'base_type', 'parameters', 'meta', '_hash'
-    )
+    __slots__ = ('name', 'base_type', 'parameters', 'meta', '_hash')
 
     def __init__(self, name, base_type, parameters, meta=None):
         """A ParametrizedType is constructed with a *name*, a *base_type*, one
@@ -296,7 +328,7 @@ class ParametrizedType(object):
         :param meta: Some (optional) metadata to associate with this type.
         :type meta: object
         
-        :raises TypeError: if :param:`parameter_types` has length < 1.
+        :raises TypeError: if :param:`parameters` has length < 1.
 
         """
         self.name = name
@@ -304,7 +336,7 @@ class ParametrizedType(object):
 
         if len(parameters) < 1:
             raise TypeError(
-                'Cannot construct a ParametrizedType with empty parameter_types'
+                'Cannot construct a ParametrizedType with empty parameters'
             )
 
         self.parameters = parameters
@@ -321,7 +353,7 @@ class ParametrizedType(object):
         return {
             'name': self.name,
             'base_type': self.base_type,
-            'parameter_types': self.parameters,
+            'parameters': self.parameters,
             'meta': self.meta
         }
 
@@ -329,7 +361,7 @@ class ParametrizedType(object):
         self.__init__(
             state['name'],
             state['base_type'],
-            state['parameter_types'],
+            state['parameters'],
             state['meta']
         )
 
@@ -391,10 +423,10 @@ class ParametrizedType(object):
     def __repr__(self):
         return (
             'ParametrizedType(name={name}, base_type={base_type}, '
-            'parameter_types={parameter_types}, meta={meta})'
+            'parameters={parameters}, meta={meta})'
         ).format(
             name=repr(self.name),
             base_type=repr(self.base_type),
-            parameter_types=repr(self.parameters),
+            parameters=repr(self.parameters),
             meta=repr(self.meta)
         )

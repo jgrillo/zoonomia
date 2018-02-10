@@ -1,5 +1,5 @@
 ```
-   Copyright 2015-2017 Jesse C. Grillo
+   Copyright 2015-2018 Jesse C. Grillo
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ candidate solutions which obey these type constraints. In other words,
 we decorate our basis functions with type signatures to give the space
 of possible candidate solutions some more structure. Not only can we
 feed candidate solutions richly typed data streams, but the candidate
-solutions themselves can transform data in more interesting ways
+solutions themselves can also transform data in more interesting ways
 internally.
 
 Zoonomia provides the user a bolt-on generic type system and some
